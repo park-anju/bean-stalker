@@ -9,7 +9,7 @@
   },
   "scripts": {
     "brain:validate": "node scripts/validate-brain.mjs",
-    "dev": "pnpm --parallel --filter ./apps/* run dev",
+    "dev": "pnpm --parallel --filter \"./apps/*\" run dev",
     "lint": "eslint .",
     "format": "prettier --check .",
     "typecheck": "pnpm -r --if-present run typecheck",
