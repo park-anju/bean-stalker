@@ -11,12 +11,12 @@ updated: 2026-08-27
 
 ## Active objective
 
-Prepare for T00 repository bootstrap, then complete the P0 path in [[Three Day Build Plan]].
+T00 repository bootstrap is DONE. A review checkpoint is expected before T01 begins — see [[Task Status]].
 
 ## Next READY tasks
 
-- `T00` — workspace/bootstrap and quality tooling
-- `T01` — shared contracts and environment schema (after T00)
+- `T01` — shared contracts and environment schema
+- `T03` — responsive React shell/routes (dependency T00 satisfied; not yet started)
 
 ## Immediate human prerequisites
 

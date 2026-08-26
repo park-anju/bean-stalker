@@ -13,10 +13,10 @@ Status vocabulary: `PENDING`, `READY`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 
 | ID | Task | Depends on | Status | Canonical context |
 |---|---|---|---|---|
-| T00 | Bootstrap pnpm/TS/Vite/Fastify/test tooling | — | READY | [[System Architecture]], [[Local Development Runbook]] |
-| T01 | Shared Zod contracts + env validation | T00 | PENDING | [[Data Model]], [[API Key Boundaries]], [[API Contract]] |
+| T00 | Bootstrap pnpm/TS/Vite/Fastify/test tooling | — | DONE | [[System Architecture]], [[Local Development Runbook]] |
+| T01 | Shared Zod contracts + env validation | T00 | READY | [[Data Model]], [[API Key Boundaries]], [[API Contract]] |
 | T02 | Distance/filter/favourite domain helpers | T01 | PENDING | [[Ranking and Filtering Rules]], [[Favorite Cafe Model]] |
-| T03 | Responsive React shell/routes | T00 | PENDING | [[Screen Inventory]], [[UX Contract]] |
+| T03 | Responsive React shell/routes | T00 | READY | [[Screen Inventory]], [[UX Contract]] |
 | T04 | Current + manual location resolution | T01,T03 | PENDING | [[Location Resolution]], [[Privacy Boundaries]] |
 | T05 | Fastify cafe search + Google provider adapter | T01 | PENDING | [[API Contract]], [[External Service Constraints]], [[ADR-005 Server-Side Places Proxy]] |
 | T06 | Maps JavaScript map integration | T03 | PENDING | [[System Architecture]], [[API Key Boundaries]] |
