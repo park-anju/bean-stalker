@@ -174,3 +174,43 @@ Append verified evidence between implementation tasks/sessions. Do not replace h
 - **Known failures:** none outstanding — the `predev` race described above was found and fixed within this task, not left open.
 - **Security/provider review:** no new credential surface introduced; `packages/domain` has zero dependencies beyond `@bean-stalker/contracts` (type-only usage) and touches no environment variables, network, or storage APIs, consistent with its "pure, testable entirely in memory" mandate.
 - **Next safe task:** T03 (web shell/routes) and T05 (Fastify search + provider adapter) are both READY (dependency T01 DONE). T09/T10 remain PENDING — they also depend on T07, which is not yet DONE. Per the session's explicit scope, stopping here for a review checkpoint.
+
+---
+
+### `T03` — Responsive React shell/routes
+
+- **Date:** 2026-08-27
+- **Executor:** Claude Code
+- **Starting commit:** `eb188f0` (Record T02 implementation handoff evidence)
+- **Ending commit:** `b7e0823` (Implement T03: responsive React shell/routes)
+- **Requirements:** no Traceability Matrix row moved to VERIFIED; genuine partial unit/e2e evidence recorded against NFR-004/005 (see below).
+- **Changed:**
+  - `apps/web/src/components/Header.tsx` (new): brand `Link` + `nav aria-label="Primary"` with two `NavLink`s; active route gets `nav-link--active` (underline + font-weight, not colour alone) and React Router's own `aria-current="page"`.
+  - `apps/web/src/components/AppShell.tsx` (new): layout-route component — skip link → `Header` → `<main id="main-content"><Outlet/></main>`. Rendered once via a React Router layout `<Route element={<AppShell />}>` wrapping `/`, `/favorites`, and `*`, so header/nav/landmarks are never duplicated per page.
+  - `apps/web/src/routes/DiscoveryPage.tsx`, `FavoritesPage.tsx` (rewritten): honest, single "not yet wired" placeholder each — no fake interactive controls, no simulated Screen Inventory sub-components (LocationSearch/CafeList/CafeMap etc. were deliberately not stubbed out as empty boxes, since that risks reading as a broken layout rather than an intentional one). `FavoritesPage` includes Screen Inventory SCR-02's required local-only/staleness copy now, since it's accurate product copy, not fake functionality.
+  - `apps/web/src/routes/NotFoundPage.tsx` (new): simple accessible 404 with a link home.
+  - `apps/web/src/App.tsx`: switched from manually wrapping every route element in the same `<nav>`/`<main>` JSX to the layout-route + `Outlet` pattern.
+  - `apps/web/src/styles/app.css` (new): plain CSS, no new dependency. Responsive container (`max-width` + padding, no fixed desktop widths), `flex-wrap` header/nav (no hamburger menu — two links simply wrap, per the task's own guidance not to invent one), `focus-visible` outlines, a visually-hidden-until-focused skip link.
+  - `apps/web/src/main.tsx`: imports the new stylesheet.
+  - `tests/e2e/bootstrap-shell.spec.ts` → renamed `app-shell.spec.ts` and rewritten: landmarks, nav round-trip, direct `/favorites` load, not-found route + return-home, and a 375px mobile-viewport horizontal-overflow check.
+  - `docs/03_REQUIREMENTS/Traceability Matrix.md`: NFR-004/005 row annotated with which specific evidence now exists (see Requirements section below).
+- **Explicitly not changed:** no Google Maps/Places code, no search/location/filter/sort UI behaviour, no favourite persistence, no `packages/domain` import into `apps/web` (confirmed — nothing in this task's diff touches it), no backend/domain code, no changes to `apps/api`'s startup architecture.
+- **Manual UI verification:** captured real Playwright screenshots (desktop 1280×800 and mobile 375×667) against a running `pnpm dev` instance — confirmed: header/nav render correctly and wrap without overflow at mobile width; active-nav underline moves correctly between Discover/Favorites; the not-found page renders with a working "Return to Bean Stalker" link; page copy is readable at both widths. (First screenshot attempt raced a click before capturing — caught and redone with an explicit wait; not a product bug, a script bug in my own verification tooling.)
+- **Commands run:**
+
+| Command | Exact result |
+|---|---|
+| `node scripts/validate-brain.mjs` | PASSED: 22 required files, 74 governed notes, 74 unique note IDs, 0 unresolved wiki links |
+| `pnpm lint` | passed, 0 problems |
+| `pnpm format` | passed (after `--write` on 2 files) |
+| `pnpm typecheck` | passed for all 4 packages |
+| `pnpm test` | passed — 71 tests total: contracts 20, domain 31, apps/api 6, apps/web 14 (up from 7 — new landmark/skip-link/not-found/nav/keyboard tests) |
+| `pnpm build` | passed — 162 modules (up from 158; CSS now emitted as a separate `dist/assets/*.css` chunk) |
+| `pnpm e2e` | passed — 5/5 (was 1/1; expanded shell/nav/mobile-viewport coverage) |
+| `pnpm dev` (all 4 processes) | api `/health` → `{"status":"ok"}` on port 3001; web served correctly; manual screenshots taken against this instance; all stopped cleanly |
+| manual: `grep` built `apps/web/dist/assets/*.js` for the server-key placeholder | absent — credential boundary regression-checked, unchanged from T01/T02 |
+
+- **Tests added/run:** `apps/web/src/App.test.tsx` expanded from 2 to 9 tests (landmarks present, skip link present, discovery/favorites/not-found routes render, return-home from 404, nav click navigates, `aria-current` on the active link only, Enter-key activates a focused nav link). `tests/e2e/app-shell.spec.ts` expanded from 1 to 5 Playwright tests (landmarks, nav round-trip, direct favorites load, not-found + return home, mobile viewport no-overflow). All pass.
+- **Known failures:** none outstanding.
+- **Security/provider review:** no new credential surface; no new dependency added at all (plain CSS, existing React Router). Credential boundary re-verified via bundle grep, unchanged from T01/T02.
+- **Next safe task:** T04 (location resolution), T05 (Fastify search + provider adapter), and T06 (Maps JavaScript integration) are all READY (T04 needed both T01 and T03; T03 being DONE is what newly unblocks it). T09/T10 remain PENDING (still need T07). Per the session's explicit scope, stopping here for a review checkpoint — not starting any of them.
