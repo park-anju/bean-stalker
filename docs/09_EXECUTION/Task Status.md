@@ -16,10 +16,10 @@ Status vocabulary: `PENDING`, `READY`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 | T00 | Bootstrap pnpm/TS/Vite/Fastify/test tooling | — | DONE | [[System Architecture]], [[Local Development Runbook]] |
 | T01 | Shared Zod contracts + env validation | T00 | DONE | [[Data Model]], [[API Key Boundaries]], [[API Contract]] |
 | T02 | Distance/filter/favourite domain helpers | T01 | DONE | [[Ranking and Filtering Rules]], [[Favorite Cafe Model]] |
-| T03 | Responsive React shell/routes | T00 | READY | [[Screen Inventory]], [[UX Contract]] |
-| T04 | Current + manual location resolution | T01,T03 | PENDING | [[Location Resolution]], [[Privacy Boundaries]] |
+| T03 | Responsive React shell/routes | T00 | DONE | [[Screen Inventory]], [[UX Contract]] |
+| T04 | Current + manual location resolution | T01,T03 | READY | [[Location Resolution]], [[Privacy Boundaries]] |
 | T05 | Fastify cafe search + Google provider adapter | T01 | READY | [[API Contract]], [[External Service Constraints]], [[ADR-005 Server-Side Places Proxy]] |
-| T06 | Maps JavaScript map integration | T03 | PENDING | [[System Architecture]], [[API Key Boundaries]] |
+| T06 | Maps JavaScript map integration | T03 | READY | [[System Architecture]], [[API Key Boundaries]] |
 | T07 | Search orchestration/list/marker sync | T04,T05,T06 | PENDING | [[Search Lifecycle]], [[UX Contract]] |
 | T08 | Restricted-credential live provider smoke | T07 | PENDING | [[API Key Boundaries]], [[API Cost Guardrail Runbook]] |
 | T09 | Local sort/filter controls | T02,T07 | PENDING | [[Ranking and Filtering Rules]] |

@@ -23,7 +23,7 @@ updated: 2026-08-27
 | FR-019 | [[API Contract]] | TC-API-005 | PLANNED |
 | NFR-001/002 | [[Threat Model]], [[Privacy Boundaries]] | TC-SEC-001..004 | PLANNED |
 | NFR-003/009 | [[Performance Test Plan]], [[API Cost Guardrail Runbook]] | PERF-001..003 | PLANNED |
-| NFR-004/005 | [[UX Contract]] | TC-A11Y-001..003 | PLANNED |
+| NFR-004/005 | [[UX Contract]] | TC-A11Y-001..003 | PLANNED — evidence exists for the shell/nav portion of TC-A11Y-001 (keyboard operable) and for NFR-005 responsive behaviour (`apps/web`, T03: unit + e2e, including a mobile no-overflow check); TC-A11Y-002/003 require favourite controls and a map, neither of which exist yet |
 | NFR-006..008 | [[Test Strategy]], [[Observability Runbook]] | TC-ERR/OPS | PLANNED |
 
 

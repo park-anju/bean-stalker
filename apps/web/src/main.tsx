@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { App } from './App';
 import { queryClient } from './query-client';
 import './env';
+import './styles/app.css';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
