@@ -1,0 +1,111 @@
+openapi: 3.1.0
+info:
+  title: Bean Stalker API
+  version: 0.1.0
+  description: P0 API contract for nearby cafe discovery.
+servers:
+  - url: http://localhost:3001
+paths:
+  /api/v1/health:
+    get:
+      operationId: getHealth
+      responses:
+        '200':
+          description: API process is healthy.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    const: ok
+  /api/v1/cafes/search:
+    post:
+      operationId: searchCafes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CafeSearchRequest'
+      responses:
+        '200':
+          description: Successful search, including zero results.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CafeSearchResponse'
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+        '502':
+          $ref: '#/components/responses/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/ErrorResponse'
+components:
+  responses:
+    ErrorResponse:
+      description: Stable Bean Stalker error envelope.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+  schemas:
+    LatLng:
+      type: object
+      additionalProperties: false
+      required: [latitude, longitude]
+      properties:
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+    CafeSearchRequest:
+      type: object
+      additionalProperties: false
+      required: [center, radiusMeters, maxResults, rankPreference]
+      properties:
+        center: { $ref: '#/components/schemas/LatLng' }
+        radiusMeters: { type: integer, minimum: 100, maximum: 5000 }
+        maxResults: { type: integer, minimum: 1, maximum: 20 }
+        rankPreference:
+          type: string
+          enum: [POPULARITY, DISTANCE]
+    Cafe:
+      type: object
+      additionalProperties: false
+      required: [placeId, name, location, openStatus, distanceMeters]
+      properties:
+        placeId: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        location: { $ref: '#/components/schemas/LatLng' }
+        formattedAddress: { type: string }
+        rating: { type: number }
+        userRatingCount: { type: integer, minimum: 0 }
+        priceLevel: { type: string }
+        openStatus: { type: string, enum: [OPEN, CLOSED, UNKNOWN] }
+        businessStatus: { type: string }
+        googleMapsUri: { type: string, format: uri }
+        distanceMeters: { type: number, minimum: 0 }
+    CafeSearchResponse:
+      type: object
+      additionalProperties: false
+      required: [searchCenter, fetchedAt, cafes]
+      properties:
+        searchCenter: { $ref: '#/components/schemas/LatLng' }
+        fetchedAt: { type: string, format: date-time }
+        cafes:
+          type: array
+          items: { $ref: '#/components/schemas/Cafe' }
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            requestId: { type: string }

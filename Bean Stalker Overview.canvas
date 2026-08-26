@@ -1,0 +1,59 @@
+{
+  "nodes": [
+    {
+      "id": "n0",
+      "type": "file",
+      "file": "docs/00_HOME/Bean Stalker Brain.md",
+      "x": 0,
+      "y": 0,
+      "width": 360,
+      "height": 220
+    },
+    {
+      "id": "n1",
+      "type": "file",
+      "file": "docs/01_BUSINESS/BRD.md",
+      "x": 420,
+      "y": 0,
+      "width": 360,
+      "height": 220
+    },
+    {
+      "id": "n2",
+      "type": "file",
+      "file": "docs/03_REQUIREMENTS/SRS.md",
+      "x": 840,
+      "y": 0,
+      "width": 360,
+      "height": 220
+    },
+    {
+      "id": "n3",
+      "type": "file",
+      "file": "docs/05_ARCHITECTURE/System Architecture.md",
+      "x": 0,
+      "y": 300,
+      "width": 360,
+      "height": 220
+    },
+    {
+      "id": "n4",
+      "type": "file",
+      "file": "docs/06_INTERFACES/UX Contract.md",
+      "x": 420,
+      "y": 300,
+      "width": 360,
+      "height": 220
+    },
+    {
+      "id": "n5",
+      "type": "file",
+      "file": "docs/09_EXECUTION/Task Status.md",
+      "x": 840,
+      "y": 300,
+      "width": 360,
+      "height": 220
+    }
+  ],
+  "edges": []
+}

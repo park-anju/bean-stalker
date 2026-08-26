@@ -1,0 +1,12 @@
+{
+  "name": "bean-stalker-project-intelligence-vault",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Bean Stalker Obsidian-compatible project brain and implementation workspace",
+  "scripts": {
+    "brain:validate": "node scripts/validate-brain.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

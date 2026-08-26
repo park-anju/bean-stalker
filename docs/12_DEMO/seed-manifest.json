@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "fixtures": [
+    {
+      "id": "FIX-HAPPY",
+      "file": "tests/fixtures/nearby-cafes-happy.json",
+      "purpose": "Search happy path"
+    },
+    {
+      "id": "FIX-EMPTY",
+      "file": "tests/fixtures/nearby-cafes-empty.json",
+      "purpose": "Zero-result success"
+    },
+    {
+      "id": "FIX-MALFORMED",
+      "file": "tests/fixtures/nearby-cafes-malformed.json",
+      "purpose": "Provider schema failure"
+    }
+  ]
+}

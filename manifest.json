@@ -1,0 +1,17 @@
+{
+  "project": "Bean Stalker",
+  "projectId": "WEB-BEAN-STALKER",
+  "artifact": "Project Intelligence Vault",
+  "version": "1.0.0",
+  "generatedDate": "2026-08-27",
+  "classification": "PERSONAL PROJECT",
+  "owner": "Project Owner",
+  "documentationRoot": "docs",
+  "entrypoints": [
+    "CLAUDE.md",
+    "docs/00_HOME/Bean Stalker Brain.md",
+    "docs/00_HOME/Source of Truth Map.md",
+    "docs/00_HOME/Current Project State.md"
+  ],
+  "sourceBaseline": "docs/01_BUSINESS/Source Brief.md"
+}
