@@ -37,6 +37,7 @@ updated: 2026-08-27
 - **TC-FILTER-002** rating descending, missing ratings last.
 - **TC-FILTER-003** open filter excludes CLOSED and UNKNOWN.
 - **TC-FILTER-004** reset restores default result set.
+- **TC-FILTER-005** minimum-rating filter excludes unrated cafes and cafes below the threshold; a zero/absent threshold does not exclude unrated cafes.
 
 ## Favourites
 

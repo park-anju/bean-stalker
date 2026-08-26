@@ -51,8 +51,24 @@ updated: 2026-08-27
 
 ## OQ-007 — Favourite snapshot shape: full `Cafe` vs compact display fields
 
-**Question:** [[Data Model]] (rank 8, system design) literally types the favourite envelope's `snapshot` field as the full `Cafe` interface. [[Favorite Cafe Model]] (rank 4, domain semantics — higher precedence per [[Source of Truth Map]]) instead describes "a compact display snapshot: name, address, coordinates, rating/open status if known at save time," which is a narrower shape than `Cafe`.
+**Status:** RESOLVED during T02.
 
-**Status:** open; discovered during T01 while implementing `packages/contracts`' shared `Cafe`/favourite schemas. T01's directly linked canonical docs (Data Model, API Key Boundaries, API Contract) do not include [[Favorite Cafe Model]], so T01 implements the favourite envelope schema literally per [[Data Model]] (`snapshot: Cafe`) without assuming the compact-field answer.
+**Original question:** [[Data Model]] (rank 8, system design) literally types the favourite envelope's `snapshot` field as the full `Cafe` interface. [[Favorite Cafe Model]] (rank 4, domain semantics) instead describes "a compact display snapshot: name, address, coordinates, rating/open status if known at save time," which reads like a narrower shape than `Cafe`.
 
-**Resolution point:** must be resolved before/during T02 (domain helpers) or T10 (localStorage favourites), whichever actually builds the favourite persistence logic — pick either "store the full normalized `Cafe`" (simpler, some storage overhead, already-fresh data if re-shown) or "store a narrower compact projection" (matches [[Favorite Cafe Model]]'s wording, smaller storage footprint) and update whichever document loses out.
+**Resolution:** not actually a conflict once each document's precedence is applied to the right subject matter. Per [[Source of Truth Map]], domain semantics (rank 4) owns "meaning and invariants," while system design (rank 8) owns "components and data" — i.e. the *exact stored shape*. [[Favorite Cafe Model]]'s "compact display snapshot" phrase, especially its qualifier "if known at save time" (which mirrors `Cafe`'s own optional fields), reads as an informal description of which fields a UI will typically *show* from the snapshot, not a competing formal schema. [[Data Model]] remains authoritative for the literal shape: the favourite envelope stores the **full normalized `Cafe`** object as `snapshot`. This is already how `packages/contracts`' `FavoriteRecordSchema` was implemented in T01 (`snapshot: CafeSchema`) — no contract change was needed. [[Favorite Cafe Model]]'s wording is retained as-is since it is compatible, not wrong.
+
+## OQ-008 — Rating-sort tie-break direction for `userRatingCount`
+
+**Question:** [[Ranking and Filtering Rules]] says rating ties "may use rating count then distance" but does not state whether a higher or lower rating count should win the tie.
+
+**Baseline assumption (implemented in T02):** higher `userRatingCount` wins the tie (descending), on the reasoning that a rating backed by more reviews is more socially validated and should surface first; distance (ascending) is the final tiebreaker. This is a minor UI-ordering detail, not a P0 correctness question — flagged per instruction rather than silently assumed.
+
+**Resolution point:** confirm or override when sort UI is built (T09) if the assumption feels wrong in practice.
+
+## OQ-009 — Task Graph does not show T05 depending on T02 for shared distance calculation
+
+**Question:** [[Data Model]]/`openapi.yaml` require every returned `Cafe` to include `distanceMeters`, which nothing in Bean Stalker's provider (Google Places) supplies directly — it must be computed via the Haversine helper T02 builds. [[Task Graph]]/[[Task Status]] show `T05` depending only on `T01`, not `T02`, even though T05's provider adapter (server-side, `apps/api`) will need the same distance function T02 builds for the frontend (`apps/web`).
+
+**Status:** open; discovered while deciding where to place T02's distance helper. Resolved for T02's own scope by placing `haversineDistanceMeters` in a new shared `packages/domain` package (workspace-consumable by both `apps/web` and `apps/api`) rather than inside `apps/web` alone, precisely so T05 can reuse it without duplicating the formula. Does not block T02, since neither app currently imports `packages/domain` (that wiring belongs to T05/T09/T10).
+
+**Resolution point:** when T05 starts, either add `@bean-stalker/domain` as its dependency and reuse `haversineDistanceMeters`, or make a deliberate, recorded decision to duplicate it — and update [[Task Graph]]'s dependency edges to reflect whichever is chosen.

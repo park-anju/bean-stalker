@@ -11,13 +11,14 @@ updated: 2026-08-27
 
 ## Active objective
 
-T01 (shared Zod contracts + environment validation) is DONE. A review checkpoint is expected before the next task begins — see [[Task Status]].
+T02 (distance/filter/favourite domain helpers) is DONE. A review checkpoint is expected before the next task begins — see [[Task Status]].
 
 ## Next READY tasks
 
-- `T02` — distance/filter/favourite domain helpers (dependency T01 satisfied)
 - `T03` — responsive React shell/routes (dependency T00 satisfied; not yet started)
 - `T05` — Fastify cafe search + Google provider adapter (dependency T01 satisfied)
+
+`T09`/`T10` (which will wire up T02's `packages/domain` helpers) remain PENDING until `T07` is also DONE.
 
 ## Immediate human prerequisites
 

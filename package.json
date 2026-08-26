@@ -8,8 +8,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "postinstall": "pnpm --filter @bean-stalker/contracts run build",
+    "postinstall": "pnpm --filter \"./packages/*\" run build",
     "brain:validate": "node scripts/validate-brain.mjs",
+    "predev": "pnpm --filter \"./packages/*\" run build",
     "dev": "pnpm --parallel --filter \"./apps/*\" --filter \"./packages/*\" run dev",
     "lint": "eslint .",
     "format": "prettier --check .",

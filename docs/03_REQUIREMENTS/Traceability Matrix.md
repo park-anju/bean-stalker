@@ -15,8 +15,8 @@ updated: 2026-08-27
 | FR-003/004 | [[Search Lifecycle]], [[API Contract]] | TC-SEARCH-001..006 | PLANNED |
 | FR-005/006 | [[UX Contract]] | TC-UI-001..003 | PLANNED |
 | FR-007 | [[Cafe Discovery Model]] | TC-MAP-001..003 | PLANNED |
-| FR-008..011 | [[Ranking and Filtering Rules]] | TC-FILTER-001..004 | PLANNED |
-| FR-012..014 | [[Favorite Cafe Model]] | TC-FAV-001..004 | PLANNED |
+| FR-008..011 | [[Ranking and Filtering Rules]] | TC-FILTER-001..005 | PLANNED — unit evidence exists for TC-FILTER-001/002/003/005 (`packages/domain`, T02); TC-FILTER-004 (reset) and UI wiring are not yet built |
+| FR-012..014 | [[Favorite Cafe Model]] | TC-FAV-001..004 | PLANNED — unit evidence exists for TC-FAV-001/002 (`packages/domain`, T02); TC-FAV-003/004 require T10's localStorage persistence |
 | FR-015/016 | [[Search Lifecycle]], [[Error Catalog]] | TC-ERR-001..005 | PLANNED |
 | FR-017 | [[Cafe Discovery Model]] | TC-UI-004 | PLANNED |
 | FR-018 | [[Business Rules]], [[API Contract]] | TC-API-001..004 | PLANNED |
