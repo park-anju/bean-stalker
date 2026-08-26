@@ -11,12 +11,13 @@ updated: 2026-08-27
 
 ## Active objective
 
-T00 repository bootstrap is DONE. A review checkpoint is expected before T01 begins — see [[Task Status]].
+T01 (shared Zod contracts + environment validation) is DONE. A review checkpoint is expected before the next task begins — see [[Task Status]].
 
 ## Next READY tasks
 
-- `T01` — shared contracts and environment schema
+- `T02` — distance/filter/favourite domain helpers (dependency T01 satisfied)
 - `T03` — responsive React shell/routes (dependency T00 satisfied; not yet started)
+- `T05` — Fastify cafe search + Google provider adapter (dependency T01 satisfied)
 
 ## Immediate human prerequisites
 

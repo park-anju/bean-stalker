@@ -62,12 +62,18 @@ importers:
 
   apps/api:
     dependencies:
+      '@bean-stalker/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@fastify/cors':
         specifier: ^11.3.0
         version: 11.3.0
       fastify:
         specifier: ^5.12.1
         version: 5.12.1
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       tsx:
         specifier: ^4.23.12
@@ -75,6 +81,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@bean-stalker/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@tanstack/react-query':
         specifier: ^5.102.5
         version: 5.102.5(react@19.2.8)
@@ -87,6 +96,9 @@ importers:
       react-router-dom:
         specifier: ^7.18.2
         version: 7.18.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@types/react':
         specifier: ^19.2.18
@@ -101,7 +113,11 @@ importers:
         specifier: ^8.2.2
         version: 8.2.2(@types/node@26.3.0)(esbuild@0.28.2)(tsx@4.23.12)
 
-  packages/contracts: {}
+  packages/contracts:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
 
 packages:
 

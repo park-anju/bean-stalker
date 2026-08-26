@@ -6,9 +6,12 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit"
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
 }

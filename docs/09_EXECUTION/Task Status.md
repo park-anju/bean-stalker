@@ -14,11 +14,11 @@ Status vocabulary: `PENDING`, `READY`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 | ID | Task | Depends on | Status | Canonical context |
 |---|---|---|---|---|
 | T00 | Bootstrap pnpm/TS/Vite/Fastify/test tooling | — | DONE | [[System Architecture]], [[Local Development Runbook]] |
-| T01 | Shared Zod contracts + env validation | T00 | READY | [[Data Model]], [[API Key Boundaries]], [[API Contract]] |
-| T02 | Distance/filter/favourite domain helpers | T01 | PENDING | [[Ranking and Filtering Rules]], [[Favorite Cafe Model]] |
+| T01 | Shared Zod contracts + env validation | T00 | DONE | [[Data Model]], [[API Key Boundaries]], [[API Contract]] |
+| T02 | Distance/filter/favourite domain helpers | T01 | READY | [[Ranking and Filtering Rules]], [[Favorite Cafe Model]] |
 | T03 | Responsive React shell/routes | T00 | READY | [[Screen Inventory]], [[UX Contract]] |
 | T04 | Current + manual location resolution | T01,T03 | PENDING | [[Location Resolution]], [[Privacy Boundaries]] |
-| T05 | Fastify cafe search + Google provider adapter | T01 | PENDING | [[API Contract]], [[External Service Constraints]], [[ADR-005 Server-Side Places Proxy]] |
+| T05 | Fastify cafe search + Google provider adapter | T01 | READY | [[API Contract]], [[External Service Constraints]], [[ADR-005 Server-Side Places Proxy]] |
 | T06 | Maps JavaScript map integration | T03 | PENDING | [[System Architecture]], [[API Key Boundaries]] |
 | T07 | Search orchestration/list/marker sync | T04,T05,T06 | PENDING | [[Search Lifecycle]], [[UX Contract]] |
 | T08 | Restricted-credential live provider smoke | T07 | PENDING | [[API Key Boundaries]], [[API Cost Guardrail Runbook]] |
