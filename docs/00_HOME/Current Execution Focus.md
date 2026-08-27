@@ -11,13 +11,14 @@ updated: 2026-08-27
 
 ## Active objective
 
-T03 (responsive React shell/routes) is DONE. A review checkpoint is expected before the next task begins — see [[Task Status]].
+T04 (current + manual location resolution) is DONE. A review checkpoint is expected before the next task begins — see [[Task Status]].
 
 ## Next READY tasks
 
-- `T04` — current + manual location resolution (dependencies T01, T03 satisfied)
 - `T05` — Fastify cafe search + Google provider adapter (dependency T01 satisfied)
 - `T06` — Maps JavaScript map integration (dependency T03 satisfied)
+
+`T07` (search orchestration) remains PENDING until both `T05` and `T06` are DONE.
 
 `T09`/`T10` (which will wire up T02's `packages/domain` helpers) remain PENDING until `T07` is also DONE.
 

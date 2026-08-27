@@ -11,7 +11,7 @@ updated: 2026-08-27
 
 | Requirement | Domain/design | Test target | P0 status |
 |---|---|---|---|
-| FR-001/002 | [[Location Resolution]] | TC-LOC-001..004 | PLANNED |
+| FR-001/002 | [[Location Resolution]] | TC-LOC-001..004 | VERIFIED — T04: TC-LOC-001 (granted geolocation → valid `SearchCenter`, unit + e2e with mocked browser coordinates), TC-LOC-002 (denied permission → manual form remains usable, unit + e2e), TC-LOC-003 (unavailable/timeout mapped to a handled error state, never a crash, unit), TC-LOC-004 (invalid manual coordinates rejected via `SearchCenterSchema` before ever reaching a resolved state, unit + component). See [[Implementation Handoffs]] for exact evidence. |
 | FR-003/004 | [[Search Lifecycle]], [[API Contract]] | TC-SEARCH-001..006 | PLANNED |
 | FR-005/006 | [[UX Contract]] | TC-UI-001..003 | PLANNED |
 | FR-007 | [[Cafe Discovery Model]] | TC-MAP-001..003 | PLANNED |

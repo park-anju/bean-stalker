@@ -1,3 +1,5 @@
+import { LocationSelector } from '../location/LocationSelector';
+
 export function DiscoveryPage() {
   return (
     <section className="page-intro">
@@ -6,9 +8,12 @@ export function DiscoveryPage() {
         Discover nearby cafes from live Google Maps data — pick a location, compare results on a
         list and map, and save the ones you like.
       </p>
+
+      <LocationSelector />
+
       <p className="placeholder-note">
-        Location search and live results aren&apos;t wired up yet — this page will host Bean
-        Stalker&apos;s cafe discovery experience in a later milestone.
+        Live cafe search and results aren&apos;t wired up yet — that&apos;s coming in a later
+        milestone. You can already set a search location above.
       </p>
     </section>
   );

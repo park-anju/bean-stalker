@@ -8,3 +8,9 @@ export const LatLngSchema = z
   .strict();
 
 export type LatLng = z.infer<typeof LatLngSchema>;
+
+export const SearchCenterSchema = LatLngSchema.extend({
+  label: z.string().min(1).optional(),
+});
+
+export type SearchCenter = z.infer<typeof SearchCenterSchema>;

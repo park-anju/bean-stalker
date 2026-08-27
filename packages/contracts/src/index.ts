@@ -1,4 +1,4 @@
-export { LatLngSchema, type LatLng } from './geo.js';
+export { LatLngSchema, type LatLng, SearchCenterSchema, type SearchCenter } from './geo.js';
 export { OpenStatusSchema, type OpenStatus, CafeSchema, type Cafe } from './cafe.js';
 export {
   CAFE_SEARCH_BOUNDS,

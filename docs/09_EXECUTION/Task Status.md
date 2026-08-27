@@ -17,7 +17,7 @@ Status vocabulary: `PENDING`, `READY`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 | T01 | Shared Zod contracts + env validation | T00 | DONE | [[Data Model]], [[API Key Boundaries]], [[API Contract]] |
 | T02 | Distance/filter/favourite domain helpers | T01 | DONE | [[Ranking and Filtering Rules]], [[Favorite Cafe Model]] |
 | T03 | Responsive React shell/routes | T00 | DONE | [[Screen Inventory]], [[UX Contract]] |
-| T04 | Current + manual location resolution | T01,T03 | READY | [[Location Resolution]], [[Privacy Boundaries]] |
+| T04 | Current + manual location resolution | T01,T03 | DONE | [[Location Resolution]], [[Privacy Boundaries]] |
 | T05 | Fastify cafe search + Google provider adapter | T01 | READY | [[API Contract]], [[External Service Constraints]], [[ADR-005 Server-Side Places Proxy]] |
 | T06 | Maps JavaScript map integration | T03 | READY | [[System Architecture]], [[API Key Boundaries]] |
 | T07 | Search orchestration/list/marker sync | T04,T05,T06 | PENDING | [[Search Lifecycle]], [[UX Contract]] |
