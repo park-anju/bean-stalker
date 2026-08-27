@@ -5,7 +5,7 @@ status: approved
 version: 1.0
 authority: execution
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-08-28
 ---
 # Implementation Handoffs
 
@@ -369,3 +369,68 @@ Append verified evidence between implementation tasks/sessions. Do not replace h
 - **Security/provider review:** only `VITE_GOOGLE_MAPS_BROWSER_KEY` (already-documented, intentionally browser-visible) is referenced anywhere in `apps/map/`; `GOOGLE_PLACES_SERVER_KEY` does not appear under `apps/web` (`grep`-verified); no new environment variable was introduced, so [[Environment Contract]] needed no change; no coordinates or map state are logged or persisted.
 - **New open question considered, not recorded:** T06 raised no genuine new spec ambiguity beyond OQ-010 (already open). The default zoom level (`DEFAULT_ZOOM = 15`) is an undocumented-by-canon implementation default, recorded as an inline code comment per the task's own "document the assumption" guidance rather than as a full Open Question, since it is a trivial, easily-revisable UI default with no downstream contract implications — unlike OQ-008/009/010, which are genuine cross-document conflicts.
 - **Next safe task:** T07 (search orchestration/list/marker sync) is READY (dependencies T04, T05, T06 all DONE). Per the session's explicit instruction, stopping here — not starting T07 or any later task.
+
+---
+
+### `T07` — Search orchestration / cafe result list / map marker synchronization
+
+- **Date:** 2026-08-28
+- **Executor:** Claude Code
+- **Starting commit:** `f649281` (Record T06 implementation handoff evidence)
+- **Ending commit:** `96b914b` (Implement T07: search orchestration, cafe list & map marker sync)
+- **New authoritative constraint recorded (RM0):** the project owner's portfolio no-cost operating constraint was added to [[Non-Functional Requirements|NFR-009]] as sub-section **RM0** (existing NFR numbering, not a new invented ID), with the frontend/deferred split spelled out; a new release blocker [[Known Blockers|BLK-003]] records the server/infra half (Fastify rate limiting, Cloud quotas, budget alerts, key restrictions). [[ADR-007 Cost-Safe Search Orchestration]] records the engineering decisions.
+- **OQ review:** OQ-008 (rating tie-break) — untouched, carried forward; T07 renders API order and adds no sort control. OQ-010 (manual-location mechanism) — untouched, carried forward; raw lat/lng entry unchanged, T07 does not own location-input UX. New **OQ-011** recorded for the fixed search parameters (radius 2000 / maxResults 10 / rank DISTANCE / staleTime 5 min) — trivially revisable constants, to confirm at T09/T11.
+
+- **Architecture:**
+  - **Search boundary (`apps/web/src/search/`):**
+    - `apiClient.ts` — `searchCafes(request, signal)`: the single browser→API call. Validates the outbound body with `CafeSearchRequestSchema` before sending (rejects before `fetch` if out of contract); POSTs JSON to `${VITE_API_BASE_URL}/api/v1/cafes/search`; forwards the TanStack Query `AbortSignal`; runtime-validates the response — `CafeSearchResponseSchema` on 2xx, `ErrorEnvelopeSchema` on non-2xx — never a bare `as` cast. Throws a typed `CafeSearchError { code: ErrorCode, message, requestId? }`; a native `AbortError` is re-thrown untouched (superseded search, not a failure); a network throw maps to `PROVIDER_UNAVAILABLE`; an unrecognisable error body maps to `INTERNAL_ERROR`. No raw provider/framework payload ever reaches the UI.
+    - `searchRequest.ts` — `buildCafeSearchRequest(center)` drops `SearchCenter.label` (request `center` is a strict `LatLng`) and applies the OQ-011 defaults; `cafeSearchQueryKey(request)` returns `['cafes','search', lat, lng, radius, maxResults, rank]` — primitives only, **coordinates unrounded** (no canonical normalization rule).
+    - `useCafeSearch.ts` — the cost-safe hook ([[ADR-007 Cost-Safe Search Orchestration]]): `enabled: center != null`, `retry: false`, `refetchOnWindowFocus/Reconnect/Mount: false`, `refetchInterval: false`, `staleTime: 5 min`, `gcTime: 10 min`. Returns a discriminated `CafeSearchView` (`no-location | loading | success{cafes,fetchedAt,isEmpty} | error{error,canRetry}`) plus an explicit `retry()`.
+    - `errorCopy.ts` — `describeSearchError(code)` (Error-Catalog-keyed user copy; API `message` is *not* surfaced verbatim) and `isRetryable(code)`.
+  - **Result surface (`apps/web/src/cafes/`):** `formatCafe.ts` (distance m/km, price `$`-tiers or `null`, `describeRating` → `"4.8 ★ (342)"` / `"No rating data"`, `describeOpenStatus` → `UNKNOWN` = "Hours unavailable" **never** "Closed"); `CafeCard.tsx`/`CafeList.tsx` (`<section aria-label="Cafe results">` → `<ul>` → `<li>`; each card a `<button aria-pressed>` with a visible "Selected" cue; Maps link is a separate `<a target="_blank" rel="noreferrer noopener">` rendered only when `googleMapsUri` present; selected card `scrollIntoView`, jsdom-guarded); `SearchStatePanel.tsx` (distinct `no-location` / `loading` (`role="status"`) / `empty` / `error` (`role="alert"` + Retry when retryable); renders nothing on non-empty success — the list owns that).
+  - **Map markers (`apps/web/src/map/markerLayer.ts` + `CafeMap.tsx`):** `MarkerLayer` is a **non-React class** that owns every `AdvancedMarkerElement` mutation (`marker.map = null`, `marker.content = …`) — this keeps `CafeMap`'s effects to method-calls only and satisfies `react-hooks/immutability`, which flagged direct marker-property assignment inside an effect. One marker per `placeId`; `sync(cafes)` does keyed create/update(position)/remove; `gmp-click` → `onSelect(placeId)`; `setSelected(id, cafes)` swaps a `PinElement` on the selected marker, sets `zIndex`, and `map.panTo`s it; `destroy()` detaches every listener. `CafeMap` loads `importLibrary('marker')` lazily (only once a cafe exists) and creates the map with `mapId: clientEnv.googleMapsMapId`. **T06 behaviour preserved:** one script, one map instance, `setCenter` on centre change, `hidden`-toggled surface, `aria-label`-disambiguated status, graceful degradation.
+  - **`DiscoveryPage`:** owns the single `useLocation()` + `useCafeSearch(resolvedCenter)` + `selectedCafeId`. Selection is reconciled to the current result set **by derivation** (`rawSelectedCafeId && cafes.some(...) ? rawSelectedCafeId : null`), not by an effect that writes state — same lint constraint T06 hit. List and map receive the same `Cafe[]` and the same derived `selectedCafeId`; `selectCafe` is a `useCallback([])`. A `<div class="discovery__results">` grid (1 col mobile, 2 col ≥60rem) holds list + map.
+  - **Backend fixture mode (`apps/api`):** `env.ts` gains `CAFE_PROVIDER: z.enum(['live','fixture']).default('live')`; `main.ts` picks `FixtureCafeProvider` or `GooglePlacesProvider`. `FixtureCafeProvider` reads `tests/fixtures/nearby-cafes-happy.json` (via `import.meta.url`), parses it with the **existing** `GoogleSearchNearbyResponseSchema`, slices to `maxResults`, and maps with the **existing** `mapGooglePlaceToCafe` — identical normalization to live, distances relative to the real request centre, zero Google traffic. `GooglePlacesProvider`, the route, the field mask and error mapping are untouched. This implements the canonical but previously-unbuilt "Fixture mode" from [[Local Development Runbook]].
+- **Config / env:**
+  - `apps/web/src/env.ts`: `VITE_GOOGLE_MAPS_MAP_ID` added as a **required** string. `apps/web/.env.local` (gitignored) + `apps/web/.env.example` + root `.env.example` set `DEMO_MAP_ID`.
+  - `apps/api/.env` (gitignored) sets `CAFE_PROVIDER=fixture`; `apps/api/.env.example` documents `live | fixture`.
+  - [[Environment Contract]] and [[Local Development Runbook]] updated; no real credential added anywhere.
+- **Changed:** `apps/web/src/env.ts` (+ `.env.example` files), `apps/web/src/map/CafeMap.tsx`, `apps/web/src/routes/DiscoveryPage.tsx`, `apps/web/src/styles/app.css` (discovery grid, cafe-card, search-state, `.visually-hidden` — plain CSS, no framework), `apps/api/src/{env.ts,main.ts}`, `apps/api/.env.example`, root `.env.example`. **New:** `apps/web/src/search/*` (4 modules + tests), `apps/web/src/cafes/*` (5 modules + tests), `apps/web/src/map/markerLayer.ts` (+ test), `apps/api/src/providers/fixtureCafeProvider.ts` (+ test), `tests/e2e/search.spec.ts`, `tests/fixtures/cafe-search-response-{happy,empty}.json`, `docs/10_DECISIONS/ADR-007 Cost-Safe Search Orchestration.md`.
+- **Explicitly not changed / not implemented:** no filter/sort UI (T09 — `rankPreference` fixed at `DISTANCE`, OQ-008 carried); no favourites / `localStorage` / `/favorites` data (T10); no Places Autocomplete / geocoding (OQ-010); no Fastify rate limiter / Cloud quota / budget setup (BLK-003); no "Search this area" / map-pan search; no prefetch, no polling, no search history; `GooglePlacesProvider` / route / field mask / error mapping untouched; `openapi.yaml` unchanged (consumed, not modified).
+- **RM0 cost-safety — every question answered NO for unintended provider requests:**
+
+| Trigger | Provider request? | Evidence |
+|---|---|---|
+| React rerender (same centre) | **NO** | `useCafeSearch.test.tsx` "one request per committed center" (rerender ×2, still 1); `search.spec.ts` keyboard-select test (`searchCount === 1`) |
+| Window focus | **NO** | `useCafeSearch.test.tsx` toggles `focusManager` → call count unchanged; `refetchOnWindowFocus: false` |
+| Network reconnect | **NO** | same test toggles `onlineManager`; `refetchOnReconnect: false` |
+| Component remount | **NO** | `useCafeSearch.test.tsx` "reuses cached result across a remount" — synchronous success, still 1 call; `refetchOnMount: false` |
+| Map pan / zoom | **NO** | map centre is presentation only; nothing calls `useCafeSearch`; `search.spec.ts` map is blocked entirely and the list still loads |
+| Marker / card selection | **NO** | selection is `selectedCafeId` client state; `markerLayer.test.ts` + `CafeMap.test.tsx` + `search.spec.ts` keyboard-select |
+| Automatic retry after failure | **NO** | `retry: false`; `useCafeSearch.test.tsx` "does not retry automatically" (1 call after error); Retry button = exactly 1 more |
+| Polling | **NO** | `refetchInterval: false`; no `setInterval` anywhere |
+| Speculative prefetch | **NO** | no `queryClient.prefetchQuery`; one key only |
+| Identical fresh query cache reuse | **YES (intended)** | `useCafeSearch.test.tsx` remount test — served from cache, no new call, within 5-min `staleTime` |
+
+- **Commands run:**
+
+| Command | Exact result |
+|---|---|
+| `node scripts/validate-brain.mjs` | PASSED — 22 required files, 75 governed notes, 75 unique note IDs, 0 unresolved wiki links (ADR-007 added) |
+| `pnpm lint` | passed, 0 problems (one `react-hooks/immutability` error during development — resolved by extracting `MarkerLayer`, not by disabling the rule) |
+| `pnpm format` | passed — `prettier --check .` clean |
+| `pnpm typecheck` | passed — all 4 packages |
+| `pnpm test` | passed — **194 tests**: contracts 24, domain 31, apps/web 99 (+47: apiClient 13, useCafeSearch 8, formatCafe 10, CafeList 6, SearchStatePanel 6, markerLayer 6, CafeMap 12 (6 kept + 6 marker/degradation), env +1), apps/api 40 (+5: fixture provider 3, env 2) |
+| `pnpm build` | passed — `apps/web` 179 modules → `dist/` (css 5.59 kB, js 345.43 kB); `apps/api` `tsc` build |
+| `pnpm e2e` | passed — **16/16** chromium (app-shell 5, location 5, search 6 — all with `page.route` fakes, Maps script `route.abort()`ed, zero Google traffic) |
+| `pnpm dev` (all 4 processes, `CAFE_PROVIDER=fixture`) | clean cold start; `predev` built shared packages; vite `:5173` ready; api `Server listening at http://127.0.0.1:3001` |
+| `curl http://localhost:3001/health` | `{"status":"ok"}` |
+| `curl -X POST .../api/v1/cafes/search` (fixture mode, valid body) | 200 — normalized `CafeSearchResponse`: 3 cafes, computed `distanceMeters`, "Unrated Roastery" keeps no rating + `UNKNOWN` open status |
+| `curl -X POST .../api/v1/cafes/search` (radiusMeters 99999) | 400 — server-side bounds still enforced (T05 preserved) |
+| `grep -rn "GOOGLE_PLACES_SERVER_KEY\|places.googleapis\|X-Goog-Api-Key" apps/web/dist/` | no matches — server key absent from the browser build; `DEMO_MAP_ID` + browser-key placeholder present (expected) |
+
+- **Data provenance during verification:** automated unit/component tests — mocked `apiClient` / mocked `google.maps`. E2e — `page.route` JSON fakes, Maps script aborted. Manual `pnpm dev` — **real Bean Stalker API with the fixture provider** (`CAFE_PROVIDER=fixture`), clearly not live Google. **No live Google Places or Maps request was made; no billing account created.**
+- **Tests added/run:** see the `pnpm test` row. Key ones: `apiClient.test.ts` — POST path/body/content-type, signal forwarding, success + empty validation, error-envelope→typed error, malformed 200→`PROVIDER_BAD_RESPONSE`, non-envelope error→`INTERNAL_ERROR`, network→`PROVIDER_UNAVAILABLE`, `AbortError` re-thrown, out-of-contract rejected before fetch. `useCafeSearch.test.tsx` — no-location→0 requests, 1-per-centre + 1-per-new-centre, no focus/reconnect refetch, remount cache reuse, no auto-retry + explicit retry=+1, **TC-SEARCH-003** deferred-promise stale-race (late A never overwrites B). `markerLayer.test.ts` / `CafeMap.test.tsx` — one marker per cafe, keyed reconciliation, listener detach, click→select, selected restyle + `panTo`, map-failure ⇒ zero markers + contained error. `search.spec.ts` — full journey, keyboard select w/o refetch, list-survives-map-failure, empty≠error, retryable error, 375px no-overflow.
+- **Known failures:** none outstanding.
+- **Security / provider review:** `GOOGLE_PLACES_SERVER_KEY` is referenced only in `apps/api` (`main.ts`, `env.ts`, provider) — never under `apps/web` (`grep`-verified in source and in `dist/`). `apps/web` uses only `VITE_`-prefixed values (`VITE_API_BASE_URL`, `VITE_GOOGLE_MAPS_BROWSER_KEY`, `VITE_GOOGLE_MAPS_MAP_ID`) — all intentionally browser-visible. No coordinates persisted or logged client-side; no `.env`/secret committed (`apps/web/.env.local`, `apps/api/.env` are gitignored). `FixtureCafeProvider` cannot be selected in production (`CAFE_PROVIDER` defaults to `live`; `fixture` is documented dev/test-only).
+- **Next safe task:** `T09` (local sort/filter controls) and `T10` (localStorage favourites) are both READY (`T02` + `T07` DONE) and independent of the credential blockers. `T08` (restricted-credential live provider smoke) is BLOCKED on [[Known Blockers|BLK-001]] / [[Known Blockers|BLK-003]]. Per the session's explicit instruction, stopping here — not starting T08/T09/T10.
