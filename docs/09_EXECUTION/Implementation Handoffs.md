@@ -214,3 +214,49 @@ Append verified evidence between implementation tasks/sessions. Do not replace h
 - **Known failures:** none outstanding.
 - **Security/provider review:** no new credential surface; no new dependency added at all (plain CSS, existing React Router). Credential boundary re-verified via bundle grep, unchanged from T01/T02.
 - **Next safe task:** T04 (location resolution), T05 (Fastify search + provider adapter), and T06 (Maps JavaScript integration) are all READY (T04 needed both T01 and T03; T03 being DONE is what newly unblocks it). T09/T10 remain PENDING (still need T07). Per the session's explicit scope, stopping here for a review checkpoint — not starting any of them.
+
+---
+
+### `T04` — Current + manual location resolution
+
+- **Date:** 2026-08-27
+- **Executor:** Claude Code
+- **Starting commit:** `fcd60bc` (Record T03 implementation handoff evidence)
+- **Ending commit:** `20030df` (Implement T04: current + manual location resolution)
+- **Requirements:** FR-001/002 moved `PLANNED` → `VERIFIED` in [[Traceability Matrix]] — all four catalogued test cases (TC-LOC-001..004) have genuine unit/component/e2e evidence, not partial coverage.
+- **Discovered spec conflict (OQ-010, recorded before implementation):** [[Location Resolution]] (T04's own linked canonical doc) says manual location is "resolved by Google Maps client-side location tooling," but T04's task scope explicitly excludes Google dependencies, and [[Task Graph]] doesn't make T04 depend on T06 (Maps integration) — meaning T04 must be buildable without any Google Maps SDK. Resolved for T04's scope: manual location is a plain, provider-independent latitude/longitude/optional-label form. It's fully functional today (produces a real, usable `SearchCenter`), not a placeholder, and matches [[Location Resolution]]'s own fallback guidance for exactly this situation ("prefer an honest intermediate boundary... no fake geography"). Whether to later upgrade this to a real Places Autocomplete widget is left to T06/T07, per OQ-010.
+- **Domain decisions:**
+  - **Shared contract:** added `SearchCenterSchema` to `packages/contracts` (`LatLngSchema.extend({ label: z.string().min(1).optional() })`) rather than a frontend-only `Coordinates` interface — reuses the coordinate validation instead of duplicating it.
+  - **State model:** a discriminated union (`idle | resolving | resolved | error`), not scattered booleans — a "resolving-and-errored-at-the-same-time" state is structurally impossible to represent, unlike with separate `isLoading`/`hasError` flags. `LocationErrorReason` reuses `ErrorCode` from `packages/contracts` (`LOCATION_PERMISSION_DENIED` / `LOCATION_UNAVAILABLE` / `VALIDATION_ERROR`) instead of inventing a second, parallel error vocabulary — Error Catalog has no separate code for `POSITION_UNAVAILABLE` vs. `TIMEOUT` (both get "retry/manual location" treatment), so both browser codes map to the single `LOCATION_UNAVAILABLE`.
+  - **Re-resolution / non-interference:** the reducer always *replaces* the whole state on `REQUEST_CURRENT`/`REQUEST_MANUAL`/`RESOLVED`, never merges — so a failed current-location attempt never blocks a later manual submission, and a fresh current-location request cleanly discards a previously-resolved manual origin. Verified directly by reducer unit tests, not just inferred from the code.
+  - **Browser boundary:** `navigator.geolocation` is touched in exactly one file (`browserGeolocation.ts`), behind a small `GeolocationAdapter` interface the hook accepts as an (optional, defaulted) parameter — tests inject a fake adapter instead of mocking global browser APIs for the hook-level tests, and mock `navigator.geolocation` directly only for the one component-level test that needs to prove the real wiring holds end-to-end.
+  - **Geolocation options:** `enableHighAccuracy: false`, `timeout: 10_000`, `maximumAge: 60_000` — none specified by [[Location Resolution]]; documented as an implementation assumption. High accuracy is unnecessary (and battery-costly) for cafe-radius discovery; a 1-minute cached fix is acceptable; 10s keeps "resolving" from hanging indefinitely.
+  - **Validation-before-native-blocking bug found and fixed:** the manual form's `<input type="number" max={90}>` silently blocked form submission via native HTML5 constraint validation before my `onSubmit` handler ever ran for out-of-range values — meaning out-of-range latitude would show a browser-native popup instead of the app's unified, accessible status message. Fixed with `noValidate` on the form; `min`/`max`/`required` attributes remain for numeric-keyboard/spinner hints, but `SearchCenterSchema` is now the single source of truth for validation feedback.
+- **Changed:**
+  - `packages/contracts/src/geo.ts` (+`index.ts`, +`geo.test.ts`): `SearchCenterSchema`/`SearchCenter`.
+  - `apps/web/src/location/` (new module, matching SDD's already-named "location" frontend module): `locationState.ts`, `geolocationErrors.ts`, `browserGeolocation.ts`, `useLocation.ts`, `LocationSelector.tsx`, `ManualLocationForm.tsx` + a `*.test.ts(x)` for each.
+  - `apps/web/src/routes/DiscoveryPage.tsx`: wired in `<LocationSelector />`; copy updated to reflect that location resolution now works while search still doesn't.
+  - `apps/web/src/styles/app.css`: `.location-selector`/`.manual-location-form`/`.form-field`/`.location-status` + the first real `button`/`input` styling in the app (T03 never needed either).
+  - `tests/e2e/location.spec.ts` (new): granted-geolocation success, denied-permission fallback, standalone manual flow, mobile viewport, T03-regression (`/favorites` still loads).
+  - `docs/00_HOME/Open Questions.md`: added OQ-010 (Google-tooling vs. task-boundary conflict, above).
+  - `docs/03_REQUIREMENTS/Traceability Matrix.md`: FR-001/002 → `VERIFIED`.
+- **Explicitly not changed:** no Google Places/Maps code, no cafe search call, no `packages/domain` import (filter/sort/favourites untouched), no favourite persistence, no changes to `apps/api` or backend startup architecture — confirmed via diff review.
+- **Commands run:**
+
+| Command | Exact result |
+|---|---|
+| `node scripts/validate-brain.mjs` | PASSED: 22 required files, 74 governed notes, 74 unique note IDs, 0 unresolved wiki links |
+| `pnpm lint` | passed, 0 problems |
+| `pnpm format` | passed (after `--write` on 6 files) |
+| `pnpm typecheck` | passed for all 4 packages |
+| `pnpm test` | passed — 101 tests total: contracts 24 (+4), domain 31, apps/api 6, apps/web 40 (+27) |
+| `pnpm build` | passed — 168 modules (up from 162); CSS grew from 1.98kB to 3.02kB (new location styles) |
+| `pnpm e2e` | passed — 10/10 (was 5/5; new `location.spec.ts` confirms denied-permission behaviour in a *real* headless Chromium context, not just a unit mock) |
+| `pnpm dev` (all 4 processes, cold) | api `/health` → `{"status":"ok"}`; web served correctly; `predev` hook confirmed still closing the shared-package race from T02 |
+| manual: `grep` built `apps/web/dist/assets/*.js` for the server-key placeholder | absent — credential boundary regression-checked, unchanged |
+| manual: 4 Playwright screenshots (desktop granted-success, desktop denied→manual-success, mobile) against a running `pnpm dev` | all render correctly: readable, on-palette, no overflow, active states correct |
+
+- **Tests added/run:** `packages/contracts`: 4 new `SearchCenterSchema` tests. `apps/web/src/location/`: `locationState.test.ts` (7), `geolocationErrors.test.ts` (4), `useLocation.test.ts` (10, covering success/resolving/permission-denied/unavailable/timeout/unsupported/manual-valid/manual-invalid/current-failure-then-manual-success/reset), `LocationSelector.test.tsx` (5, component-level with a mocked `navigator.geolocation`). `tests/e2e/location.spec.ts`: 5 Playwright tests using real browser-context geolocation permissions/mocking. **31 new automated tests, all pass**, plus 4 manual screenshots.
+- **Known failures:** none outstanding. One real bug (native HTML5 validation silently intercepting out-of-range submissions before Zod ran) was found and fixed within this task — see above.
+- **Security/provider review:** no coordinates logged anywhere (verified by reading every new file — no `console.*` calls exist in `apps/web/src/location/`); no `localStorage`/persistence of any kind; resolved coordinates live only in React's in-memory `useReducer` state, cleared on `reset()`/unmount; no new credential surface; server key re-confirmed absent from the browser bundle.
+- **Next safe task:** T05 (Fastify search + provider adapter) and T06 (Maps JavaScript integration) are both READY (dependency T01/T03 DONE respectively). T07 (search orchestration) remains PENDING — needs T04 *and* T05 *and* T06; T04 being DONE is necessary but not sufficient. Per the session's explicit scope, stopping here for a review checkpoint.
