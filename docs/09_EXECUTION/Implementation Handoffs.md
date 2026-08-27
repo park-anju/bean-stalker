@@ -260,3 +260,58 @@ Append verified evidence between implementation tasks/sessions. Do not replace h
 - **Known failures:** none outstanding. One real bug (native HTML5 validation silently intercepting out-of-range submissions before Zod ran) was found and fixed within this task — see above.
 - **Security/provider review:** no coordinates logged anywhere (verified by reading every new file — no `console.*` calls exist in `apps/web/src/location/`); no `localStorage`/persistence of any kind; resolved coordinates live only in React's in-memory `useReducer` state, cleared on `reset()`/unmount; no new credential surface; server key re-confirmed absent from the browser bundle.
 - **Next safe task:** T05 (Fastify search + provider adapter) and T06 (Maps JavaScript integration) are both READY (dependency T01/T03 DONE respectively). T07 (search orchestration) remains PENDING — needs T04 *and* T05 *and* T06; T04 being DONE is necessary but not sufficient. Per the session's explicit scope, stopping here for a review checkpoint.
+
+---
+
+### `T05` — Fastify cafe search + Google Places provider adapter
+
+- **Date:** 2026-08-27
+- **Executor:** Claude Code
+- **Starting commit:** `dc7c0c7` (Record T04 implementation handoff evidence)
+- **Ending commit:** `2ac2fc4` (Implement T05: Fastify cafe search + Google Places provider)
+- **Requirements:** FR-007, FR-018, FR-019 moved `PLANNED` → `VERIFIED`. FR-003/004 and NFR-001/002 gained substantial partial evidence (annotated, not fully verified — see [[Traceability Matrix]]).
+- **OQ-009 resolved before implementation:** confirmed `apps/api` genuinely needs T02's `haversineDistanceMeters` (Google doesn't supply distance; `Cafe.distanceMeters` is required) — added `@bean-stalker/domain` as a real dependency, no duplicate formula. [[Task Graph]]/[[Task Status]] updated: `T05` now depends on `T01,T02`.
+- **OQ-006 resolved as part of this task's routing work:** `/health` stays unprefixed (infra liveness checks conventionally sit outside API versioning); the new `/api/v1` prefix is reserved for versioned business routes, starting with `POST /api/v1/cafes/search`. `openapi.yaml` and [[API Contract]] updated to document `/health` (not `/api/v1/health`) to match this deliberate decision.
+- **Two real documentation gaps found and filled (not silently, both recorded):**
+  1. [[Seed Data Catalog]] planned `tests/fixtures/nearby-cafes-{happy,empty,malformed}.json` but they were never created (T00–T04 never needed them). Created them now, shaped like Google Places API (New) `searchNearby` responses — 5 places covering rated/unrated/open/closed/unknown-hours/missing-address, an empty-results fixture (`{}`, matching Google's real behavior of omitting the `places` key entirely rather than returning `places: []`), and a malformed fixture (a place missing its required `id`).
+  2. [[Traceability Matrix]] referenced `TC-API-001..005` for FR-018/FR-019, but [[Test Case Catalog]] had no "API" section at all. Added the five missing entries, matching what T05 actually tests.
+- **Architecture:**
+  - `apps/api/src/providers/cafeProvider.ts`: `CafeProvider` interface (`searchNearby(request): Promise<Cafe[]>`), so the route depends on an abstraction, not `fetch()`/Google directly.
+  - `apps/api/src/providers/providerError.ts`: `ProviderError` (narrowed to exactly the 4 provider `ErrorCode`s it can carry, so the route's status-code lookup is exhaustive and type-safe with no cast).
+  - `apps/api/src/providers/google-places/` (path matches [[SDD]] section 5 exactly): `googlePlacesSchemas.ts` (private, non-strict Zod schemas for Google's raw response — Bean Stalker doesn't control Google's schema evolution, so unknown extra fields are stripped, not rejected; `id`/`displayName`/`location` are load-bearing and required since `Cafe` cannot be constructed without them), `googlePlacesMapper.ts` (pure `mapGooglePlaceToCafe`, no network), `googlePlacesProvider.ts` (the actual HTTP-calling `GooglePlacesProvider`, constructor-injectable `fetchImpl` — same DI pattern as T04's `GeolocationAdapter`, for the same reason: tests inject a fake instead of mocking Node's global `fetch`).
+  - `apps/api/src/routes/cafeSearch.ts`: thin route — Zod-validate request → provider.searchNearby → Zod-validate response → send; provider failures caught and mapped via a small `Record<ProviderErrorCode, number>` lookup; anything else rethrown to the global handler.
+  - `apps/api/src/app.ts`: `buildApp` signature changed from `(webOrigin: string)` to `({ webOrigin, cafeProvider })` — a deliberate breaking change to inject the provider; added `app.setErrorHandler` so even a malformed/unparsable JSON body returns Bean Stalker's envelope, not Fastify's default shape. `main.ts` now constructs the real `GooglePlacesProvider` from the already-validated `ServerEnv` (`env.googlePlacesServerKey`, `env.googlePlacesTimeoutMs`) — never touches `process.env` directly.
+- **Google Nearby Search request:** `POST https://places.googleapis.com/v1/places:searchNearby`, `includedTypes: ["cafe"]` (matches OQ-003's cafe-focused baseline), `X-Goog-Api-Key`, `X-Goog-FieldMask` set to exactly 10 fields (`places.id`, `.displayName`, `.formattedAddress`, `.location`, `.rating`, `.userRatingCount`, `.priceLevel`, `.currentOpeningHours.openNow`, `.businessStatus`, `.googleMapsUri`) — never `*`. `radiusMeters`/`maxResults`/`rankPreference` pass straight through from the already-bounded `CafeSearchRequest` (Google's own accepted ranges for `circle.radius`, `maxResultCount` [1-20], and `rankPreference` enum values happen to exactly match Bean Stalker's own `CAFE_SEARCH_BOUNDS`/`RankPreferenceSchema`, so no re-clamping or translation is needed). Timeout via `AbortSignal.timeout(env.googlePlacesTimeoutMs)`.
+- **Mapping:** `openNow: true/false/absent` → `OPEN`/`CLOSED`/`UNKNOWN` (never inferred as OPEN from mere presence of hours data); every other optional Google field passes straight through or stays `undefined` — never fabricated. `distanceMeters` computed via `haversineDistanceMeters(searchCenter, place.location)`, not reimplemented.
+- **Provider error mapping:** HTTP 401/403 → `PROVIDER_AUTH_ERROR` (502); 429 → `PROVIDER_RATE_LIMITED` (503); any other non-2xx, network failure, or timeout → `PROVIDER_UNAVAILABLE` (503); a response that fails Zod validation (missing required fields) or isn't JSON → `PROVIDER_BAD_RESPONSE` (502). Any non-`ProviderError` throw is caught by the global error handler and returned as a generic `INTERNAL_ERROR` (500) — the raw message never reaches the client (test-verified), though it is logged server-side for diagnostics.
+- **Changed:**
+  - `apps/api/package.json`: added `@bean-stalker/domain` dependency.
+  - `apps/api/src/providers/{cafeProvider,providerError}.ts`, `apps/api/src/providers/google-places/{googlePlacesSchemas,googlePlacesMapper,googlePlacesProvider}.ts` (+ matching `*.test.ts`), `apps/api/src/routes/cafeSearch.ts` (+ `apps/api/src/test/cafeSearch.test.ts`), `apps/api/src/app.ts`, `apps/api/src/main.ts`, `apps/api/src/test/health.test.ts` (updated for the new `buildApp` signature).
+  - `tests/fixtures/nearby-cafes-{happy,empty,malformed}.json` (new).
+  - `docs/06_INTERFACES/{openapi.yaml, API Contract.md}`: `/api/v1/health` → `/health`.
+  - `docs/08_QUALITY/Test Case Catalog.md`: new "API" section (`TC-API-001..005`).
+  - `docs/00_HOME/Open Questions.md`: OQ-009 and OQ-006 marked RESOLVED.
+  - `docs/09_EXECUTION/Task Graph.md`, `Task Status.md`: `T05` depends on `T01,T02`.
+  - `docs/03_REQUIREMENTS/Traceability Matrix.md`: FR-007/018/019 → `VERIFIED`; FR-003/004 and NFR-001/002 annotated with partial evidence.
+- **Explicitly not changed:** no Google Maps JS/map rendering, no React cafe fetching/`useQuery`/result cards, no autocomplete/geocoding (OQ-010 untouched), no filter/sort UI, no favourite persistence, no changes to `apps/web`'s location module — confirmed via diff review.
+- **Commands run:**
+
+| Command | Exact result |
+|---|---|
+| `node scripts/validate-brain.mjs` | PASSED: 22 required files, 74 governed notes, 74 unique note IDs, 0 unresolved wiki links |
+| `pnpm lint` | passed (after removing 6 forbidden non-null assertions from test files, replaced with explicit runtime checks) |
+| `pnpm format` | passed (after `--write` on 6 files) |
+| `pnpm typecheck` | passed for all 4 packages |
+| `pnpm test` | passed — 130 tests total: contracts 24, domain 31, apps/web 40, apps/api 35 (was 6 — +7 mapper, +12 provider, +10 route) |
+| `pnpm build` | passed — apps/web unchanged at 168 modules (confirms no accidental frontend coupling to the new backend code) |
+| `pnpm e2e` | passed — 10/10, unchanged (T05 is backend-only; no e2e coverage change was warranted or made) |
+| `pnpm dev` (all 4 processes, cold) | clean startup; `/health` → `{"status":"ok"}` |
+| manual: `curl -X POST /api/v1/cafes/search` with a valid body, real (placeholder/fake) server key | **made a genuine live network call to Google's real endpoint** — Google rejected the fake key, correctly mapped to `PROVIDER_UNAVAILABLE`/503, no crash, no leaked detail |
+| manual: `curl -X POST /api/v1/cafes/search` with `latitude: 999` | 400, `VALIDATION_ERROR`, clear field-level message, provider never invoked |
+| manual: `grep` built `apps/web/dist/assets/*.js` for the server key | absent — credential boundary regression-checked |
+
+- **Tests added/run:** `googlePlacesMapper.test.ts` (7): full mapping, missing-optional-fields honesty, openNow→OPEN/CLOSED/UNKNOWN, distance delegation, empty/malformed response schema handling. `googlePlacesProvider.test.ts` (12): request shape/headers/field-mask, successful mapping, empty results, 401/403/429/500 mapping, malformed response, non-JSON body, timeout, generic network failure, no-key-leak-in-error. `cafeSearch.test.ts` (10): 200 success, 200 empty, 400 for out-of-range/missing-field/unknown-field, 502/503/500 provider-failure mapping, malformed-JSON-body envelope consistency. **29 new tests, all pass.**
+- **Known failures:** none outstanding. All 6 ESLint non-null-assertion violations were fixed within this task, not left as debt.
+- **Live provider verification:** NOT PERFORMED as a genuine success case — no valid `GOOGLE_PLACES_SERVER_KEY` exists in this sandbox (only T01/T04's non-functional placeholder). Per the task's own instruction, no fake "successful" result is claimed. The manual malformed-key test above did incidentally make a real network call to Google's actual endpoint and observed a real rejection, safely handled — genuine (if limited) evidence that the network path itself functions, distinct from a real cafe-data verification.
+- **Security/privacy review:** server key read only from the validated `ServerEnv` (never `process.env` directly in provider code); never logged, never returned, never reaches the client even in error paths (test-verified); provider failures log only `{ providerErrorCode }`, never Google's raw response body or the key; search coordinates flow browser→API→Google for the single active request only — nothing is persisted, no analytics, no coordinate logging.
+- **Next safe task:** T06 (Maps JavaScript integration) is READY (dependency T03 DONE). T07 (search orchestration) remains PENDING — needs T06 too, not just T04+T05. Per the session's explicit scope, stopping here for a review checkpoint.
