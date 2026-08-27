@@ -11,13 +11,14 @@ updated: 2026-08-28
 
 ## Active objective
 
-T09 (local sort/filter controls) is DONE — minimum-rating + Open Now filters and Distance/Rating sort operate entirely on the fetched `Cafe[]` via T02's helpers, with zero additional provider requests. [[Open Questions|OQ-008]] is resolved. No task is IN_PROGRESS; the executor stopped after T09 as instructed rather than starting T10/T08.
+T10 (localStorage favourites) is DONE — a versioned `bean-stalker:favorites` store behind a Zod-validated storage boundary, shared via `FavoritesProvider` (persist-then-commit), `FavoriteButton` on every result card (sibling, never nested), and a real `/favorites` page. Favourites are entirely browser-local: 0 provider requests, nothing reaches Fastify/Google. This completes the [[MVP Scope]] P0 feature set. No task is IN_PROGRESS.
 
 ## Next READY tasks
 
-- `T10` — localStorage favourites (dependencies `T02`, `T07` DONE) — READY, not started. The only unblocked task. Will wire T02's `isFavorite`/`addFavorite`/`removeFavorite`, add a versioned `localStorage` envelope, favourite toggles on `CafeCard`, and populate `/favorites`.
+**None.** T09 and T10 were the last unblocked tasks. `T11`–`T15` are all gated on `T08`.
 
-`T08` (restricted-credential live provider smoke) is BLOCKED on [[Known Blockers|BLK-001]] and [[Known Blockers|BLK-003]] despite its dependency `T07` being DONE; `T11`/`T12` sit behind it.
+- `T08` — restricted-credential live provider smoke — BLOCKED on [[Known Blockers|BLK-001]] and [[Known Blockers|BLK-003]]. It needs the developer to create a Google Cloud project, enable only the required Maps Platform APIs, configure restricted browser + server credentials, set a budget/usage alert, and keep secrets out of source control (the five prerequisites below).
+- One minor deferred item, [[Open Questions|OQ-012]] — a "favourites only" Discovery filter — is not on the critical path.
 
 ## Immediate human prerequisites
 

@@ -89,7 +89,7 @@ test.describe('cafe search — results journey', () => {
     await page.goto('/');
     await setManualLocation(page);
 
-    const card = page.getByRole('button', { name: /Kopi Kenangan/ });
+    const card = page.getByRole('button', { name: 'Kopi Kenangan', exact: true });
     await card.focus();
     await page.keyboard.press('Enter');
     await expect(card).toHaveAttribute('aria-pressed', 'true');
@@ -109,7 +109,7 @@ test.describe('cafe search — results journey', () => {
       /map is unavailable/i,
     );
     await expect(page.getByRole('region', { name: 'Cafe results' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Kopi Kenangan/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Kopi Kenangan', exact: true })).toBeVisible();
   });
 
   test('an empty result is shown as empty, not as an error', async ({ page }) => {
@@ -159,7 +159,7 @@ test.describe('cafe search — results journey', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
     await setManualLocation(page);
-    await expect(page.getByRole('button', { name: /Kopi Kenangan/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Kopi Kenangan', exact: true })).toBeVisible();
 
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

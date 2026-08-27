@@ -2,16 +2,22 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { EMPTY_FAVORITE_STORE } from '@bean-stalker/domain';
 import { App } from './App';
+import { FavoritesProvider } from './favorites/FavoritesProvider';
+
+afterEach(() => localStorage.clear());
 
 function renderApp(initialPath: string) {
   const queryClient = new QueryClient();
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialPath]}>
-        <App />
-      </MemoryRouter>
+      <FavoritesProvider initialStore={EMPTY_FAVORITE_STORE}>
+        <MemoryRouter initialEntries={[initialPath]}>
+          <App />
+        </MemoryRouter>
+      </FavoritesProvider>
     </QueryClientProvider>,
   );
 }

@@ -56,7 +56,7 @@ function cardNames(page: Page) {
   return page
     .getByRole('region', { name: 'Cafe results' })
     .getByRole('listitem')
-    .locator('button[aria-pressed]')
+    .locator('.cafe-card__name')
     .allInnerTexts();
 }
 
@@ -74,7 +74,7 @@ test.describe('local filtering & sorting', () => {
     expect(search.count).toBe(1);
 
     await page.getByLabel('Minimum rating').selectOption('4.5+');
-    await expect(page.getByRole('button', { name: /Kopi Kenangan/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Kopi Kenangan', exact: true })).toBeVisible();
     expect(await cardNames(page)).toEqual(['Kopi Kenangan']);
 
     await page.getByLabel('Minimum rating').selectOption('Any rating');

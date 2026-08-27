@@ -5,7 +5,9 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Cafe, CafeSearchResponse } from '@bean-stalker/contracts';
+import { EMPTY_FAVORITE_STORE } from '@bean-stalker/domain';
 import { DiscoveryPage } from './DiscoveryPage.js';
+import { FavoritesProvider } from '../favorites/FavoritesProvider.js';
 import { searchCafes } from '../search/apiClient.js';
 
 vi.mock('../search/apiClient.js', async (importOriginal) => {
@@ -70,7 +72,9 @@ function renderPage() {
   const client = new QueryClient();
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>
-      <MemoryRouter>{children}</MemoryRouter>
+      <FavoritesProvider initialStore={EMPTY_FAVORITE_STORE}>
+        <MemoryRouter>{children}</MemoryRouter>
+      </FavoritesProvider>
     </QueryClientProvider>
   );
   return render(<DiscoveryPage />, { wrapper });
@@ -94,7 +98,13 @@ function listIds(): string[] {
   if (!region) return [];
   return within(region)
     .getAllByRole('listitem')
-    .map((li) => idOf(within(li).getByRole('button').textContent ?? ''));
+    .map((li) => idOf(li.querySelector('.cafe-card__name')?.textContent ?? ''));
+}
+
+function selectButton(name: string): HTMLElement {
+  // A string `name` is an exact match — hits the select button, not the
+  // favourite button whose name is "Add <cafe> to favourites".
+  return screen.getByRole('button', { name });
 }
 
 function mapIds(): string[] {
@@ -106,7 +116,10 @@ beforeEach(() => {
   searchCafesMock.mockReset();
 });
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+  localStorage.clear();
+});
 
 describe('DiscoveryPage — local filtering & sorting (RM0: zero extra requests)', () => {
   it('transforms the fetched cafes locally; list and map stay in sync; one request total', async () => {
@@ -167,7 +180,7 @@ describe('DiscoveryPage — local filtering & sorting (RM0: zero extra requests)
     await resolveLocation(user);
     await screen.findByRole('region', { name: 'Cafe results' });
 
-    await user.click(screen.getByRole('button', { name: /Old Town Cafe/ }));
+    await user.click(selectButton('Old Town Cafe'));
     expect(screen.getByTestId('map-selected')).toHaveTextContent('o');
 
     await user.click(screen.getByLabelText('Open now only'));
@@ -177,9 +190,7 @@ describe('DiscoveryPage — local filtering & sorting (RM0: zero extra requests)
     await user.click(screen.getByLabelText('Open now only')); // relax
     expect(listIds().slice().sort()).toEqual(['k', 'o']);
     expect(screen.getByTestId('map-selected')).toHaveTextContent('none'); // not auto-reselected
-    expect(
-      within(screen.getByRole('button', { name: /Old Town Cafe/ })).queryByText('Selected'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Selected')).not.toBeInTheDocument();
 
     expect(searchCafesMock).toHaveBeenCalledTimes(1);
   });
@@ -192,5 +203,53 @@ describe('DiscoveryPage — local filtering & sorting (RM0: zero extra requests)
 
     await screen.findByText(/no cafes were found near this location/i);
     expect(screen.queryByRole('group', { name: 'Filter and sort cafes' })).not.toBeInTheDocument();
+  });
+});
+
+describe('DiscoveryPage — favourites integration (RM0: zero extra requests)', () => {
+  it('favouriting a result persists membership across filter/sort without a search, and does not select the cafe', async () => {
+    searchCafesMock.mockResolvedValue(response([KOPI, UNRATED, OLD_TOWN]));
+    const user = userEvent.setup();
+    renderPage();
+    await resolveLocation(user);
+    await screen.findByRole('region', { name: 'Cafe results' });
+
+    await user.click(screen.getByRole('button', { name: 'Add Old Town Cafe to favourites' }));
+    expect(
+      screen.getByRole('button', { name: 'Remove Old Town Cafe from favourites' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    // favouriting did not select the cafe / pan the map
+    expect(screen.getByTestId('map-selected')).toHaveTextContent('none');
+
+    // hide Old Town (4.2) with a rating filter — the favourite persists ...
+    await user.selectOptions(screen.getByLabelText('Minimum rating'), '4.5+');
+    expect(listIds()).toEqual(['k']);
+    // ... and comes back still favourited when the filter is relaxed
+    await user.selectOptions(screen.getByLabelText('Minimum rating'), 'Any rating');
+    await user.selectOptions(screen.getByLabelText('Sort by'), 'Rating');
+    expect(
+      screen.getByRole('button', { name: 'Remove Old Town Cafe from favourites' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+
+    expect(searchCafesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('add / remove / re-add a favourite issues no cafe-search request', async () => {
+    searchCafesMock.mockResolvedValue(response([KOPI]));
+    const user = userEvent.setup();
+    renderPage();
+    await resolveLocation(user);
+    await screen.findByRole('region', { name: 'Cafe results' });
+
+    const add = () => screen.getByRole('button', { name: 'Add Kopi Kenangan to favourites' });
+    const remove = () =>
+      screen.getByRole('button', { name: 'Remove Kopi Kenangan from favourites' });
+
+    await user.click(add());
+    await user.click(remove());
+    await user.click(add());
+
+    expect(remove()).toHaveAttribute('aria-pressed', 'true');
+    expect(searchCafesMock).toHaveBeenCalledTimes(1);
   });
 });

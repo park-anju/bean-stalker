@@ -94,3 +94,11 @@ updated: 2026-08-28
 **Partially informed by T09:** T09 added local sort/filter controls but deliberately did **not** add a user-facing *search radius* or *provider rank* control (that would change candidate retrieval and is out of T09 scope). It did fix the local‑UX defaults it owns, recorded in `apps/web/src/cafes/filterState.ts`: default filters = `{ minRating: 0, openNowOnly: false, sortBy: 'DISTANCE' }` (hides nothing, preserves T07 order); minimum‑rating choices = Any / 3+ / 3.5+ / 4+ / 4.5+. `rankPreference: 'DISTANCE'` is now doubly reasonable since the default local sort is also distance.
 
 **Still open:** `radiusMeters` (2000), `maxResults` (10), `staleTime`/`gcTime` (5/10 min) remain T07 assumptions. **Resolution point:** confirm or override if/when a radius control is added and when T11 hardens freshness/race behaviour. None is a P0 correctness question.
+
+## OQ-012 — "Favourites only" filter on the Discovery list
+
+**Question:** [[Ranking and Filtering Rules]] lists `favourite: based on local favourite membership` among the filters, and [[Functional Requirements|FR-014]] reads "view/filter favourites". T10 delivered the **view** (a dedicated `/favorites` page) and the favourite membership state, but deliberately did **not** add a "favourites only" toggle to the Discovery `FilterBar`.
+
+**Status:** open; raised while implementing T10. T10's stated scope (persistence boundary + `FavoriteButton` + `FavoritesPage`) did not include a new Discovery filter control, and adding one would touch T09's `FilterBar` and either extend T02's `filterCafes` (which currently only knows `minRating`/`openNow`) or filter by membership in `applyDiscoveryFilters`. FR-014's "view" half is satisfied by `/favorites`.
+
+**Resolution point:** decide during T12 (responsive + accessibility polish) or a dedicated follow-up whether a "favourites only" checkbox on the Discovery list is worth the small `FilterBar`/`filterCafes` change, or whether the dedicated `/favorites` page is a sufficient "filter to favourites" affordance for P0. Do not silently add or drop it.
