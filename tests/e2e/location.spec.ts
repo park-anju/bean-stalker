@@ -9,7 +9,7 @@ test.describe('location resolution — current location granted', () => {
   test('resolves current location and shows it in the status region', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Use my current location' }).click();
-    await expect(page.getByRole('status')).toHaveText(
+    await expect(page.getByRole('status', { name: 'Location status' })).toHaveText(
       'Using your current location (1.5535, 110.3593).',
     );
   });
@@ -21,12 +21,14 @@ test.describe('location resolution — no permission granted', () => {
   }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Use my current location' }).click();
-    await expect(page.getByRole('status')).toContainText(/permission was denied/i);
+    await expect(page.getByRole('status', { name: 'Location status' })).toContainText(
+      /permission was denied/i,
+    );
 
     await page.getByLabel('Latitude').fill('1.55');
     await page.getByLabel('Longitude').fill('110.36');
     await page.getByRole('button', { name: 'Use this location' }).click();
-    await expect(page.getByRole('status')).toHaveText(
+    await expect(page.getByRole('status', { name: 'Location status' })).toHaveText(
       'Using a custom location (1.5500, 110.3600).',
     );
   });
@@ -37,7 +39,9 @@ test.describe('location resolution — no permission granted', () => {
     await page.getByLabel('Longitude').fill('110.36');
     await page.getByLabel('Label (optional)').fill('Home');
     await page.getByRole('button', { name: 'Use this location' }).click();
-    await expect(page.getByRole('status')).toHaveText('Using Home (1.5500, 110.3600).');
+    await expect(page.getByRole('status', { name: 'Location status' })).toHaveText(
+      'Using Home (1.5500, 110.3600).',
+    );
   });
 
   test('remains usable at a mobile viewport with no horizontal overflow', async ({ page }) => {

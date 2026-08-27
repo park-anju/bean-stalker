@@ -1,6 +1,12 @@
-import { useLocation } from './useLocation.js';
 import { ManualLocationForm } from './ManualLocationForm.js';
 import type { LocationState } from './locationState.js';
+import type { ManualLocationInput } from './useLocation.js';
+
+export interface LocationSelectorProps {
+  state: LocationState;
+  requestCurrentLocation: () => Promise<void>;
+  submitManualLocation: (input: ManualLocationInput) => void;
+}
 
 function describeResolved(state: Extract<LocationState, { status: 'resolved' }>): string {
   const { source, center } = state;
@@ -11,9 +17,11 @@ function describeResolved(state: Extract<LocationState, { status: 'resolved' }>)
     : `Using a custom location (${coords}).`;
 }
 
-export function LocationSelector() {
-  const { state, requestCurrentLocation, submitManualLocation } = useLocation();
-
+export function LocationSelector({
+  state,
+  requestCurrentLocation,
+  submitManualLocation,
+}: LocationSelectorProps) {
   const isResolvingCurrent = state.status === 'resolving' && state.source === 'current';
 
   return (
@@ -28,7 +36,7 @@ export function LocationSelector() {
 
       <ManualLocationForm onSubmit={submitManualLocation} />
 
-      <p role="status" className="location-status">
+      <p role="status" aria-label="Location status" className="location-status">
         {state.status === 'resolved' && describeResolved(state)}
         {state.status === 'error' && state.message}
         {isResolvingCurrent && 'Finding your current location…'}

@@ -19,8 +19,8 @@ Status vocabulary: `PENDING`, `READY`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 | T03 | Responsive React shell/routes | T00 | DONE | [[Screen Inventory]], [[UX Contract]] |
 | T04 | Current + manual location resolution | T01,T03 | DONE | [[Location Resolution]], [[Privacy Boundaries]] |
 | T05 | Fastify cafe search + Google provider adapter | T01,T02 | DONE | [[API Contract]], [[External Service Constraints]], [[ADR-005 Server-Side Places Proxy]] |
-| T06 | Maps JavaScript map integration | T03 | READY | [[System Architecture]], [[API Key Boundaries]] |
-| T07 | Search orchestration/list/marker sync | T04,T05,T06 | PENDING | [[Search Lifecycle]], [[UX Contract]] |
+| T06 | Maps JavaScript map integration | T03 | DONE | [[System Architecture]], [[API Key Boundaries]] |
+| T07 | Search orchestration/list/marker sync | T04,T05,T06 | READY | [[Search Lifecycle]], [[UX Contract]] |
 | T08 | Restricted-credential live provider smoke | T07 | PENDING | [[API Key Boundaries]], [[API Cost Guardrail Runbook]] |
 | T09 | Local sort/filter controls | T02,T07 | PENDING | [[Ranking and Filtering Rules]] |
 | T10 | localStorage favourites | T02,T07 | PENDING | [[Favorite Cafe Model]], [[ADR-004 Favorites Local Storage]] |

@@ -1,7 +1,22 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
-import { LocationSelector } from './LocationSelector';
+import { LocationSelector } from './LocationSelector.js';
+import { useLocation } from './useLocation.js';
+
+// DiscoveryPage owns the single useLocation() instance shared between
+// LocationSelector and CafeMap; this harness reproduces that wiring so
+// LocationSelector's own tests still exercise real hook behaviour.
+function Harness() {
+  const location = useLocation();
+  return (
+    <LocationSelector
+      state={location.state}
+      requestCurrentLocation={location.requestCurrentLocation}
+      submitManualLocation={location.submitManualLocation}
+    />
+  );
+}
 
 const originalGeolocation = Object.getOwnPropertyDescriptor(globalThis.navigator, 'geolocation');
 
@@ -28,7 +43,7 @@ describe('LocationSelector', () => {
       success({ coords: { latitude: 1.5535, longitude: 110.3593 } } as GeolocationPosition);
     });
     const user = userEvent.setup();
-    render(<LocationSelector />);
+    render(<Harness />);
 
     await user.click(screen.getByRole('button', { name: 'Use my current location' }));
 
@@ -42,7 +57,7 @@ describe('LocationSelector', () => {
       error?.({ code: 1, message: 'denied' } as GeolocationPositionError);
     });
     const user = userEvent.setup();
-    render(<LocationSelector />);
+    render(<Harness />);
 
     await user.click(screen.getByRole('button', { name: 'Use my current location' }));
     expect(await screen.findByRole('status')).toHaveTextContent(/permission was denied/i);
@@ -58,7 +73,7 @@ describe('LocationSelector', () => {
 
   it('accepts a manual location with a label', async () => {
     const user = userEvent.setup();
-    render(<LocationSelector />);
+    render(<Harness />);
 
     await user.type(screen.getByLabelText('Latitude'), '1.55');
     await user.type(screen.getByLabelText('Longitude'), '110.36');
@@ -70,7 +85,7 @@ describe('LocationSelector', () => {
 
   it('rejects invalid manual coordinates with an accessible error message', async () => {
     const user = userEvent.setup();
-    render(<LocationSelector />);
+    render(<Harness />);
 
     await user.type(screen.getByLabelText('Latitude'), '999');
     await user.type(screen.getByLabelText('Longitude'), '0');
@@ -86,7 +101,7 @@ describe('LocationSelector', () => {
         success({ coords: { latitude: 1.55, longitude: 110.36 } } as GeolocationPosition);
     });
     const user = userEvent.setup();
-    render(<LocationSelector />);
+    render(<Harness />);
 
     await user.click(screen.getByRole('button', { name: 'Use my current location' }));
     expect(screen.getByRole('button', { name: 'Locating…' })).toBeDisabled();

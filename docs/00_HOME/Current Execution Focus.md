@@ -11,13 +11,11 @@ updated: 2026-08-27
 
 ## Active objective
 
-T05 (Fastify cafe search + Google provider adapter) is DONE. A review checkpoint is expected before the next task begins — see [[Task Status]].
+T06 (Maps JavaScript map integration) is DONE. No task is currently IN_PROGRESS; the executor has stopped after T06 as instructed rather than starting T07.
 
 ## Next READY tasks
 
-- `T06` — Maps JavaScript map integration (dependency T03 satisfied)
-
-`T07` (search orchestration) remains PENDING until `T06` is also DONE (`T04`, `T05` are already DONE).
+- `T07` — Search orchestration/list/marker sync (dependencies `T04`, `T05`, `T06` all DONE) — READY, not yet started.
 
 `T09`/`T10` (which will wire up T02's `packages/domain` helpers) remain PENDING until `T07` is also DONE.
 
