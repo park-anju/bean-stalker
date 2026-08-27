@@ -56,6 +56,14 @@ updated: 2026-08-27
 - **TC-UI-003** mobile layout retains primary flow.
 - **TC-UI-004** Maps URI action appears only when available.
 
+## API
+
+- **TC-API-001** search request with invalid/out-of-bounds parameters is rejected before any provider call.
+- **TC-API-002** search request missing a required field is rejected.
+- **TC-API-003** server does not accept a client-supplied provider credential (unknown fields rejected).
+- **TC-API-004** malformed/unparsable request body still returns the stable Bean Stalker error envelope, not a framework-default shape.
+- **TC-API-005** health endpoint reports process availability without leaking secrets.
+
 ## Security
 
 - **TC-SEC-001** no server key appears in built web assets.

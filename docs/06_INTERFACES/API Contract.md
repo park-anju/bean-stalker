@@ -29,9 +29,9 @@ Response:
 - `fetchedAt` ISO timestamp;
 - normalized `cafes[]`.
 
-## GET `/api/v1/health`
+## GET `/health`
 
-Returns process-level health only. It does not need to make a billable Google Places request.
+Returns process-level health only. It does not need to make a billable Google Places request. Deliberately unprefixed/unversioned — see [[Open Questions|OQ-006]]: infra liveness checks conventionally sit outside API versioning.
 
 ## Validation/bounds
 

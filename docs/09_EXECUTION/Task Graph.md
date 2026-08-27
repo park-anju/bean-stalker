@@ -16,6 +16,7 @@ flowchart TD
   T00 --> T03[T03 Web Shell]
   T01 --> T04[T04 Location]
   T01 --> T05[T05 API + Places Adapter]
+  T02 --> T05
   T03 --> T06[T06 Map]
   T04 --> T07[T07 Search UI]
   T05 --> T07

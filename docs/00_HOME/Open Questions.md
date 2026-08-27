@@ -43,11 +43,11 @@ updated: 2026-08-27
 
 ## OQ-006 — Health endpoint path mismatch
 
-**Question:** `openapi.yaml` and [[API Contract]] specify `GET /api/v1/health`, but T00's `apps/api` implementation registers a bare `GET /health` with no route prefix or version segment.
+**Status:** RESOLVED during T05.
 
-**Status:** open; discovered during T01 while reading T01's canonical context. Non-blocking for T01 (contracts/env validation do not touch routing). Does not require reopening T00's DONE status — the endpoint works and was validated against its own (unversioned) shape.
+**Original question:** `openapi.yaml` and [[API Contract]] specified `GET /api/v1/health`, but T00's `apps/api` implementation registered a bare `GET /health` with no route prefix or version segment.
 
-**Resolution point:** should be reconciled when T05 (Fastify cafe search + Google provider adapter) introduces the `/api/v1/cafes/search` route — at that point either add an `/api/v1` prefix to the existing health route to match the canonical contract, or update `openapi.yaml`/[[API Contract]] if an unprefixed path is deliberately preferred. Do not resolve silently; pick one and record the reasoning.
+**Resolution:** `/health` deliberately stays unprefixed/unversioned. It is a process-level liveness/infra check (used by orchestration/uptime tooling, not application clients), and such checks conventionally sit outside API versioning so they remain stable across API version changes. The new `/api/v1` prefix is reserved for versioned business routes, starting with `POST /api/v1/cafes/search`. `openapi.yaml` and [[API Contract]] are updated to document `GET /health` (unprefixed) to match reality — this is a documentation correction reflecting a deliberate decision, not documentation drift left unaddressed.
 
 ## OQ-007 — Favourite snapshot shape: full `Cafe` vs compact display fields
 
@@ -67,11 +67,11 @@ updated: 2026-08-27
 
 ## OQ-009 — Task Graph does not show T05 depending on T02 for shared distance calculation
 
-**Question:** [[Data Model]]/`openapi.yaml` require every returned `Cafe` to include `distanceMeters`, which nothing in Bean Stalker's provider (Google Places) supplies directly — it must be computed via the Haversine helper T02 builds. [[Task Graph]]/[[Task Status]] show `T05` depending only on `T01`, not `T02`, even though T05's provider adapter (server-side, `apps/api`) will need the same distance function T02 builds for the frontend (`apps/web`).
+**Status:** RESOLVED during T05.
 
-**Status:** open; discovered while deciding where to place T02's distance helper. Resolved for T02's own scope by placing `haversineDistanceMeters` in a new shared `packages/domain` package (workspace-consumable by both `apps/web` and `apps/api`) rather than inside `apps/web` alone, precisely so T05 can reuse it without duplicating the formula. Does not block T02, since neither app currently imports `packages/domain` (that wiring belongs to T05/T09/T10).
+**Original question:** [[Data Model]]/`openapi.yaml` require every returned `Cafe` to include `distanceMeters`, which nothing in Bean Stalker's provider (Google Places) supplies directly — it must be computed via the Haversine helper T02 builds. [[Task Graph]]/[[Task Status]] showed `T05` depending only on `T01`, not `T02`, even though T05's provider adapter (server-side, `apps/api`) needs the same distance function T02 built for the frontend (`apps/web`).
 
-**Resolution point:** when T05 starts, either add `@bean-stalker/domain` as its dependency and reuse `haversineDistanceMeters`, or make a deliberate, recorded decision to duplicate it — and update [[Task Graph]]'s dependency edges to reflect whichever is chosen.
+**Resolution:** confirmed the dependency is real, not avoidable. `apps/api`'s Google Places adapter imports `haversineDistanceMeters` directly from `@bean-stalker/domain` (already a real, tested, workspace-consumable package since T02) to populate each mapped `Cafe.distanceMeters` — the formula is not duplicated. [[Task Graph]] and [[Task Status]] are updated: `T05` now depends on `T01,T02` (both already `DONE`, so this is a documentation correction, not a new blocker).
 
 ## OQ-010 — Manual location mechanism: Google client tooling vs. task boundaries
 

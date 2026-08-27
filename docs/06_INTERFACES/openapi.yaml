@@ -6,7 +6,7 @@ info:
 servers:
   - url: http://localhost:3001
 paths:
-  /api/v1/health:
+  /health:
     get:
       operationId: getHealth
       responses:

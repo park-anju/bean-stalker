@@ -65,6 +65,9 @@ importers:
       '@bean-stalker/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@bean-stalker/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@fastify/cors':
         specifier: ^11.3.0
         version: 11.3.0

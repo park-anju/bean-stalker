@@ -1,0 +1,54 @@
+{
+  "places": [
+    {
+      "id": "places/kopi-kenangan",
+      "displayName": { "text": "Kopi Kenangan", "languageCode": "en" },
+      "formattedAddress": "12 Jalan Padungan, Kuching, Sarawak",
+      "location": { "latitude": 1.5551, "longitude": 110.3489 },
+      "rating": 4.8,
+      "userRatingCount": 342,
+      "priceLevel": "PRICE_LEVEL_MODERATE",
+      "currentOpeningHours": { "openNow": true },
+      "businessStatus": "OPERATIONAL",
+      "googleMapsUri": "https://maps.google.com/?cid=1111111111111111111"
+    },
+    {
+      "id": "places/unrated-roastery",
+      "displayName": { "text": "Unrated Roastery", "languageCode": "en" },
+      "location": { "latitude": 1.556, "longitude": 110.351 }
+    },
+    {
+      "id": "places/old-town-cafe",
+      "displayName": { "text": "Old Town Cafe", "languageCode": "en" },
+      "formattedAddress": "88 Main Bazaar, Kuching, Sarawak",
+      "location": { "latitude": 1.5525, "longitude": 110.3465 },
+      "rating": 4.2,
+      "userRatingCount": 210,
+      "priceLevel": "PRICE_LEVEL_INEXPENSIVE",
+      "currentOpeningHours": { "openNow": false },
+      "businessStatus": "OPERATIONAL",
+      "googleMapsUri": "https://maps.google.com/?cid=2222222222222222222"
+    },
+    {
+      "id": "places/hidden-bean",
+      "displayName": { "text": "Hidden Bean", "languageCode": "en" },
+      "formattedAddress": "5 Carpenter Street, Kuching, Sarawak",
+      "location": { "latitude": 1.5538, "longitude": 110.3501 },
+      "rating": 3.5,
+      "userRatingCount": 12,
+      "businessStatus": "OPERATIONAL"
+    },
+    {
+      "id": "places/river-cafe",
+      "displayName": { "text": "River Cafe", "languageCode": "en" },
+      "formattedAddress": "1 Waterfront Esplanade, Kuching, Sarawak",
+      "location": { "latitude": 1.5601, "longitude": 110.3441 },
+      "rating": 4.6,
+      "userRatingCount": 987,
+      "priceLevel": "PRICE_LEVEL_MODERATE",
+      "currentOpeningHours": { "openNow": true },
+      "businessStatus": "OPERATIONAL",
+      "googleMapsUri": "https://maps.google.com/?cid=3333333333333333333"
+    }
+  ]
+}
