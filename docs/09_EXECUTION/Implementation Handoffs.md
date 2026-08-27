@@ -434,3 +434,62 @@ Append verified evidence between implementation tasks/sessions. Do not replace h
 - **Known failures:** none outstanding.
 - **Security / provider review:** `GOOGLE_PLACES_SERVER_KEY` is referenced only in `apps/api` (`main.ts`, `env.ts`, provider) — never under `apps/web` (`grep`-verified in source and in `dist/`). `apps/web` uses only `VITE_`-prefixed values (`VITE_API_BASE_URL`, `VITE_GOOGLE_MAPS_BROWSER_KEY`, `VITE_GOOGLE_MAPS_MAP_ID`) — all intentionally browser-visible. No coordinates persisted or logged client-side; no `.env`/secret committed (`apps/web/.env.local`, `apps/api/.env` are gitignored). `FixtureCafeProvider` cannot be selected in production (`CAFE_PROVIDER` defaults to `live`; `fixture` is documented dev/test-only).
 - **Next safe task:** `T09` (local sort/filter controls) and `T10` (localStorage favourites) are both READY (`T02` + `T07` DONE) and independent of the credential blockers. `T08` (restricted-credential live provider smoke) is BLOCKED on [[Known Blockers|BLK-001]] / [[Known Blockers|BLK-003]]. Per the session's explicit instruction, stopping here — not starting T08/T09/T10.
+
+---
+
+### `T09` — Local sort/filter controls
+
+- **Date:** 2026-08-28
+- **Executor:** Claude Code
+- **Starting commit:** `8259d83` (Record T07 implementation handoff evidence)
+- **Ending commit:** `cfacf70` (Implement T09: local sort/filter controls)
+- **RM0 invariant held:** T09 operates only on the already-fetched `Cafe[]`. No filter/sort value reaches `useCafeSearch`, the TanStack Query key or the `CafeSearchRequest` — `grep` of `apps/web/src/search/` finds zero references to `filter`/`sortBy`/`minRating`/`openNow`. Every control change (rating, Open Now, sort, Reset) and the filtered-empty state issue **0** `POST /api/v1/cafes/search` requests — asserted at integration level (`DiscoveryPage.test.tsx`, `searchCafes` call count stays 1) and e2e (`filters.spec.ts`, a live request counter stays 1).
+- **OQ-008 RESOLVED:** [[Ranking and Filtering Rules]] bumped to v1.1 with the explicit tie-break — rating DESC → `userRatingCount` DESC (absent = 0) → `distanceMeters` ASC → stable order — confirming the T02 `sortCafes` implementation. No higher-authority source specified otherwise, so this is a rank-4 doc clarification, **not an ADR**. `sortCafes()` unchanged. [[Open Questions]] OQ-008 marked RESOLVED.
+- **OQ-011 partially informed:** T09 fixed the local-UX defaults it owns (`DEFAULT_DISCOVERY_FILTERS = { minRating: 0, openNowOnly: false, sortBy: 'DISTANCE' }`; min-rating options Any/3+/3.5+/4+/4.5+) and deliberately added **no** search-radius or provider-rank control. `radiusMeters` / `maxResults` / `staleTime` remain T07 assumptions, still open.
+- **Architecture:**
+  - `apps/web` now depends on `@bean-stalker/domain` (`workspace:*`, added to `apps/web/package.json`; `pnpm install` linked it, `pnpm-lock.yaml` +3 lines). First frontend consumer of the domain package.
+  - `apps/web/src/cafes/filterState.ts` — `DiscoveryFilters { minRating: number; openNowOnly: boolean; sortBy: CafeSortMode }`, `DEFAULT_DISCOVERY_FILTERS`, `MIN_RATING_OPTIONS`, `SORT_OPTIONS`, `isDefaultFilters()`, and the pure `applyDiscoveryFilters(cafes, filters)` = `sortCafes(filterCafes(cafes, { minRating, openNow }), sortBy)`. **Filter → sort.** Delegates entirely to `packages/domain`; reimplements no ranking/filtering; `filterCafes`/`sortCafes` both return fresh arrays so TanStack Query's cached `Cafe[]` is never mutated.
+  - `apps/web/src/cafes/FilterBar.tsx` — `role="group" aria-label`, native `<select>` (Minimum rating), `<input type="checkbox">` (Open now only), native `<select>` (Sort by), and a Reset button `disabled` when `isDefaultFilters`. `useId`-linked visible `<label>`s; sort change is validated against `SORT_OPTIONS` (no `as` cast).
+  - `apps/web/src/routes/DiscoveryPage.tsx` — `filters` is plain `useState`; `displayedCafes = useMemo(() => applyDiscoveryFilters(cafes, filters), [cafes, filters])`. Both `CafeList` and `CafeMap` receive `displayedCafes` + one shared `selectedCafeId`. `FilterBar` renders only when `view.status === 'success' && cafes.length > 0`.
+  - **Selection reconciliation (two layers, no effect-setState):** (1) render-derivation — `selectedCafeId` = raw id only if present in `displayedCafes`, else `null` (covers a new search replacing `cafes`); (2) the `changeFilters` handler drops the raw id permanently when the change hides the selected cafe, so relaxing a filter later never silently re-selects it (§42).
+  - **Filtered-empty ≠ API-empty:** `SearchStatePanel` keeps the API-empty copy ("No cafes were found near this location"); `DiscoveryPage` renders a distinct "No cafes match your current filters. Try relaxing them." (`role="status"`) when `cafes.length > 0 && displayedCafes.length === 0`.
+  - `apps/web/src/cafes/CafeList.tsx` — optional `totalCount` prop; heading shows "X of Y cafes shown" when filtered, "Y cafes found" otherwise.
+  - `apps/web/src/map/markerLayer.ts` — `MarkerLayer.setSelected` now tracks `lastPannedTo` and only `panTo`s on a genuine selection change, so a re-sort / filter change that leaves the same cafe selected does not move the map (§34). Marker reconciliation is still keyed by `placeId`: a sort re-order updates marker positions in place (no new markers); a filter removes/re-adds markers by id.
+  - `apps/web/src/styles/app.css` — `.filter-bar` (flex-wrap row → column stack ≤30rem), field/label/select/reset styling. Plain CSS, no framework.
+- **Changed:** `apps/web/package.json` (+`@bean-stalker/domain`), `pnpm-lock.yaml`, `apps/web/src/routes/DiscoveryPage.tsx`, `apps/web/src/cafes/CafeList.tsx`, `apps/web/src/map/markerLayer.ts`, `apps/web/src/styles/app.css`, `docs/02_DOMAIN/Ranking and Filtering Rules.md` (v1.1), execution/traceability docs. **New:** `apps/web/src/cafes/{filterState.ts,FilterBar.tsx}` (+ `filterState.test.ts`, `FilterBar.test.tsx`), `apps/web/src/routes/DiscoveryPage.test.tsx`, `tests/e2e/filters.spec.ts`.
+- **Explicitly not changed / not implemented:** `apps/api`, `CafeProvider`/`GooglePlacesProvider`/`FixtureCafeProvider`, `/api/v1/cafes/search`, `openapi.yaml`, server env, the Google field mask, the TanStack Query key, `CafeSearchRequest`; no "favourites only" filter (needs T10); no radius/provider-rank control; no URL query-string state; no `localStorage` for filters (page refresh resets controls — acceptable for MVP); no T10/T08/deploy/Cloud config.
+- **RM0 T09 evidence — every answer NO:**
+
+| Question | Answer | Evidence |
+|---|---|---|
+| min-rating change triggers API search? | **NO** | `DiscoveryPage.test.tsx` "transforms … zero extra requests" (`searchCafes` count 1); `filters.spec.ts` counter 1 |
+| Open Now toggle triggers API search? | **NO** | same tests, toggle on+off |
+| sort change triggers API search? | **NO** | same tests, DISTANCE→RATING |
+| Reset triggers API search? | **NO** | same tests, Reset click |
+| filtered-empty triggers expansion/refetch? | **NO** | `DiscoveryPage.test.tsx` "distinguishes filtered-empty…" (count 1); e2e |
+| sorting causes a speculative request? | **NO** | no `prefetchQuery`; sort only reorders `displayedCafes` |
+| controls modify the TanStack queryKey? | **NO** | `grep apps/web/src/search/` → 0 filter/sort references; key derives only from the request built from `center` |
+| controls modify `CafeSearchRequest`? | **NO** | same; `buildCafeSearchRequest(center)` takes only the centre |
+
+- **Commands run:**
+
+| Command | Exact result |
+|---|---|
+| `node scripts/validate-brain.mjs` | PASSED — 22 required files, 75 governed notes, 75 unique IDs, 0 unresolved wiki links |
+| `pnpm lint` | passed, 0 problems |
+| `pnpm format` | passed — `prettier --check .` clean |
+| `pnpm typecheck` | passed — all 4 packages |
+| `pnpm test` | passed — **214 tests**: contracts 24, domain 31, apps/web 119 (+20: `filterState` 9, `FilterBar` 7, `DiscoveryPage` 4), apps/api 40 |
+| `pnpm build` | passed — `apps/web` vite build; `apps/api` tsc build |
+| `pnpm e2e` | passed — **19/19** chromium (app-shell 5, location 5, search 6, filters 3) |
+| `pnpm dev` (`CAFE_PROVIDER=fixture`, cold) | clean start — `predev` built shared packages; vite `:5173`; api `Server listening at http://127.0.0.1:3001`; contracts+domain watchers "Found 0 errors" |
+| `curl http://localhost:3001/health` | `{"status":"ok"}` |
+| `curl -X POST …/api/v1/cafes/search` (fixture) | 200 — 5 varied cafes (ratings 4.8/none/4.2/3.5/4.6; OPEN/UNKNOWN/CLOSED/UNKNOWN/OPEN) — a filterable dataset for manual verification |
+| `grep -rn "GOOGLE_PLACES_SERVER_KEY\|places.googleapis\|X-Goog-Api-Key" apps/web/dist/` | no matches — server key absent from the browser build |
+| `grep -rn "filter\|sortBy\|minRating\|openNow" apps/web/src/search/` | no matches — filter state never enters the search layer |
+
+- **Data provenance during verification:** integration/component tests mock `searchCafes` and stub `CafeMap`; e2e uses `page.route` JSON fakes with the Maps script `route.abort()`ed; manual `pnpm dev` used `CAFE_PROVIDER=fixture`. **No live Google Places or Maps request; no billing account.**
+- **Tests added/run:** `filterState.test.ts` (9) — defaults hide nothing / distance order, immutability, positive vs zero min-rating (unrated excluded / kept), Open Now (CLOSED **and** UNKNOWN out), combined = intersection, **OQ-008** tie-break against the canonical fixture (`C, B, A, E, D`), filter-then-sort, `isDefaultFilters`. `FilterBar.test.tsx` (7) — labelled native controls, each change reports the right next `DiscoveryFilters`, Reset disabled-at-default / returns the default triple, keyboard operable (Tab + Space). `DiscoveryPage.test.tsx` (4) — list+map stay in sync through rating/Open-Now/sort/Reset with `searchCafes` count 1; filtered-empty ≠ API-empty (count 1); selecting a CLOSED cafe then Open Now clears the selection and relaxing does not restore it; no FilterBar before results. `filters.spec.ts` e2e (3) — controls change the list with a request counter fixed at 1, filtered-empty message, 375px no overflow. **20 unit/component + 3 e2e; all pass.**
+- **Known failures:** none outstanding.
+- **Security / cost review:** no new env var, no backend change, no new Google field. Filter/sort state is local `useState` only — `grep`-verified absent from `apps/web/src/search/` and from `apps/web/dist` (server key also absent, re-checked). No coordinates or filter prefs persisted.
+- **Next safe task:** `T10` (localStorage favourites) is the only unblocked READY task (`T02` + `T07` DONE). `T08` remains BLOCKED ([[Known Blockers|BLK-001]] / [[Known Blockers|BLK-003]]); `T11`/`T12` sit behind it. Per the session's explicit instruction, stopping here — not starting T10/T08/deploy.
