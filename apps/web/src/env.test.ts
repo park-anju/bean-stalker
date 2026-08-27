@@ -4,6 +4,7 @@ import { loadClientEnv } from './env';
 const validEnv = {
   VITE_API_BASE_URL: 'http://localhost:3001',
   VITE_GOOGLE_MAPS_BROWSER_KEY: 'test-browser-key',
+  VITE_GOOGLE_MAPS_MAP_ID: 'DEMO_MAP_ID',
 };
 
 describe('loadClientEnv', () => {
@@ -11,7 +12,13 @@ describe('loadClientEnv', () => {
     expect(loadClientEnv(validEnv)).toEqual({
       apiBaseUrl: 'http://localhost:3001',
       googleMapsBrowserKey: 'test-browser-key',
+      googleMapsMapId: 'DEMO_MAP_ID',
     });
+  });
+
+  it('fails fast when the required Maps Map ID is missing', () => {
+    const { VITE_GOOGLE_MAPS_MAP_ID: _omitted, ...withoutMapId } = validEnv;
+    expect(() => loadClientEnv(withoutMapId)).toThrowError(/VITE_GOOGLE_MAPS_MAP_ID/);
   });
 
   it('fails fast when the required API base URL is missing', () => {

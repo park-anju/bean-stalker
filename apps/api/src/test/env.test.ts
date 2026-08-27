@@ -16,7 +16,19 @@ describe('loadServerEnv', () => {
       webOrigin: 'http://localhost:5173',
       googlePlacesServerKey: 'test-server-key',
       googlePlacesTimeoutMs: 5000,
+      cafeProvider: 'live',
     });
+  });
+
+  it('defaults CAFE_PROVIDER to live and accepts an explicit fixture override', () => {
+    expect(loadServerEnv(validEnv).cafeProvider).toBe('live');
+    expect(loadServerEnv({ ...validEnv, CAFE_PROVIDER: 'fixture' }).cafeProvider).toBe('fixture');
+  });
+
+  it('rejects an unknown CAFE_PROVIDER value', () => {
+    expect(() => loadServerEnv({ ...validEnv, CAFE_PROVIDER: 'google' })).toThrowError(
+      /CAFE_PROVIDER/,
+    );
   });
 
   it('fails fast when a required variable is missing, naming the missing field', () => {

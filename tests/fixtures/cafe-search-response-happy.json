@@ -1,0 +1,39 @@
+{
+  "searchCenter": { "latitude": 1.5535, "longitude": 110.3593 },
+  "fetchedAt": "2026-08-28T02:00:00.000Z",
+  "cafes": [
+    {
+      "placeId": "places/kopi-kenangan",
+      "name": "Kopi Kenangan",
+      "location": { "latitude": 1.5551, "longitude": 110.3489 },
+      "formattedAddress": "12 Jalan Padungan, Kuching, Sarawak",
+      "rating": 4.8,
+      "userRatingCount": 342,
+      "priceLevel": "PRICE_LEVEL_MODERATE",
+      "openStatus": "OPEN",
+      "businessStatus": "OPERATIONAL",
+      "googleMapsUri": "https://maps.google.com/?cid=1111111111111111111",
+      "distanceMeters": 1160
+    },
+    {
+      "placeId": "places/unrated-roastery",
+      "name": "Unrated Roastery",
+      "location": { "latitude": 1.556, "longitude": 110.351 },
+      "openStatus": "UNKNOWN",
+      "distanceMeters": 940
+    },
+    {
+      "placeId": "places/old-town-cafe",
+      "name": "Old Town Cafe",
+      "location": { "latitude": 1.5525, "longitude": 110.3465 },
+      "formattedAddress": "88 Main Bazaar, Kuching, Sarawak",
+      "rating": 4.2,
+      "userRatingCount": 210,
+      "priceLevel": "PRICE_LEVEL_INEXPENSIVE",
+      "openStatus": "CLOSED",
+      "businessStatus": "OPERATIONAL",
+      "googleMapsUri": "https://maps.google.com/?cid=2222222222222222222",
+      "distanceMeters": 1430
+    }
+  ]
+}

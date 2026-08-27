@@ -5,7 +5,7 @@ status: approved
 version: 1.0
 authority: execution
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-08-28
 ---
 # Task Status
 
@@ -20,16 +20,21 @@ Status vocabulary: `PENDING`, `READY`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 | T04 | Current + manual location resolution | T01,T03 | DONE | [[Location Resolution]], [[Privacy Boundaries]] |
 | T05 | Fastify cafe search + Google provider adapter | T01,T02 | DONE | [[API Contract]], [[External Service Constraints]], [[ADR-005 Server-Side Places Proxy]] |
 | T06 | Maps JavaScript map integration | T03 | DONE | [[System Architecture]], [[API Key Boundaries]] |
-| T07 | Search orchestration/list/marker sync | T04,T05,T06 | READY | [[Search Lifecycle]], [[UX Contract]] |
-| T08 | Restricted-credential live provider smoke | T07 | PENDING | [[API Key Boundaries]], [[API Cost Guardrail Runbook]] |
-| T09 | Local sort/filter controls | T02,T07 | PENDING | [[Ranking and Filtering Rules]] |
-| T10 | localStorage favourites | T02,T07 | PENDING | [[Favorite Cafe Model]], [[ADR-004 Favorites Local Storage]] |
+| T07 | Search orchestration/list/marker sync | T04,T05,T06 | DONE | [[Search Lifecycle]], [[UX Contract]], [[ADR-007 Cost-Safe Search Orchestration]] |
+| T08 | Restricted-credential live provider smoke | T07 | BLOCKED | [[API Key Boundaries]], [[API Cost Guardrail Runbook]] |
+| T09 | Local sort/filter controls | T02,T07 | READY | [[Ranking and Filtering Rules]] |
+| T10 | localStorage favourites | T02,T07 | READY | [[Favorite Cafe Model]], [[ADR-004 Favorites Local Storage]] |
 | T11 | loading/empty/error/race hardening | T08 | PENDING | [[Search Lifecycle]], [[Error Catalog]] |
 | T12 | responsive + accessibility polish | T09,T10,T11 | PENDING | [[UX Contract]], [[Non-Functional Requirements]] |
 | T13 | unit/component/API/e2e verification | T11,T12 | PENDING | [[Test Strategy]], [[Test Case Catalog]] |
 | T14 | deploy with safe env/key restrictions | T13 | PENDING | [[Production Deployment Runbook]], [[Threat Model]] |
 | T15 | README/screenshots/demo/resume evidence | T14 | PENDING | [[Golden Demo Scenario]], [[Release Readiness]] |
 
+
+## Notes
+
+- `T08` is `BLOCKED` on [[Known Blockers|BLK-001]] (real restricted Google credentials) and [[Known Blockers|BLK-003]]; its dependency `T07` is `DONE`.
+- `T09` and `T10` are `READY` (dependencies `T02` + `T07` both `DONE`) and independent of the credential blockers.
 
 ## Update rule
 

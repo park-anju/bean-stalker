@@ -5,7 +5,7 @@ status: approved
 version: 1.0
 authority: execution
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-08-28
 ---
 # Open Questions
 
@@ -63,7 +63,7 @@ updated: 2026-08-27
 
 **Baseline assumption (implemented in T02):** higher `userRatingCount` wins the tie (descending), on the reasoning that a rating backed by more reviews is more socially validated and should surface first; distance (ascending) is the final tiebreaker. This is a minor UI-ordering detail, not a P0 correctness question — flagged per instruction rather than silently assumed.
 
-**Resolution point:** confirm or override when sort UI is built (T09) if the assumption feels wrong in practice.
+**Resolution point:** confirm or override when sort UI is built (T09) if the assumption feels wrong in practice. T07 did **not** touch this — it renders results in the order the API returns them (provider `rankPreference: DISTANCE`) and adds no sort control.
 
 ## OQ-009 — Task Graph does not show T05 depending on T02 for shared distance calculation
 
@@ -79,4 +79,16 @@ updated: 2026-08-27
 
 **Status:** open; discovered while implementing T04. Resolved for T04's own scope: manual location is implemented as a plain, provider-independent numeric latitude/longitude/optional-label entry form — no Google dependency, no fake geocoding, fully functional today (a user really can produce a working search origin), consistent with [[Location Resolution]]'s own fallback guidance ("If manual text requires future geocoding... prefer an honest intermediate boundary... no fake geography"). It still produces the exact canonical `SearchCenter { latitude, longitude, label? }` shape the doc specifies, so nothing downstream (T05/T07) needs to know which mechanism produced it.
 
-**Resolution point:** revised during T06. T06's actual canonical scope ([[System Architecture]], [[API Key Boundaries]]) is map-rendering infrastructure only — it does not own location-input UX, and [[Screen Inventory]]'s `CafeMarker` component is unambiguously about *cafe result* markers (owned by T07, "search orchestration/list/marker sync"), not location input. T06 therefore does not touch this question. Decide whether to upgrade manual entry to a real Google Places Autocomplete/place-picker widget (matching [[Location Resolution]]'s literal wording) or to keep raw coordinate entry as the deliberate, permanent P0 mechanism when T07 (or a dedicated follow-up) next touches location UX — and update [[Location Resolution]]'s wording to match whichever is chosen. Do not decide silently.
+**Resolution point:** still open after T07. T07's canonical scope is search orchestration + result list + cafe-result marker sync; it consumes whatever `SearchCenter` T04 produces and does not own location-input UX. Raw latitude/longitude entry remains the working P0 mechanism. Decide whether to upgrade to a real Google Places Autocomplete/place-picker widget (matching [[Location Resolution]]'s literal wording) or keep coordinate entry as the deliberate permanent P0 mechanism when a dedicated location-UX task next runs — and update [[Location Resolution]]'s wording to match. Do not decide silently. (Note: Places Autocomplete is a billable API and would need its own entry in [[Known Blockers|BLK-003]]'s restriction/quota list.)
+
+## OQ-011 — Fixed search parameters (radius / maxResults / rank / cache TTL) have no canonical values
+
+**Question:** T07 must issue a valid `CafeSearchRequest` but the brain does not specify concrete values. [[Open Questions|OQ-002]] gives a radius baseline (2 km) but nothing fixes `maxResults`, the provider `rankPreference`, or the TanStack Query `staleTime`.
+
+**Baseline assumptions (implemented in T07, in `apps/web/src/search/searchRequest.ts` / `useCafeSearch.ts`):**
+- `radiusMeters: 2000` — OQ-002 baseline.
+- `maxResults: 10` — conservative within the 1–20 contract bound; keeps provider payloads and the marker set small.
+- `rankPreference: 'DISTANCE'` — neutral "nearby" ordering; deterministic; independent of OQ-008's rating tie-break.
+- `staleTime: 5 min`, `gcTime: 10 min` — [[Search Result Freshness]]'s "short, on the order of minutes".
+
+**Resolution point:** confirm or override when T09 builds user-facing radius/rank controls and when T11 hardens freshness/race behaviour. None of these is a P0 correctness question — all are trivially revisable single constants with no contract impact.

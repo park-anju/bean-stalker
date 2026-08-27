@@ -5,7 +5,7 @@ status: approved
 version: 1.0
 authority: execution
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-08-28
 ---
 # Known Blockers
 
@@ -15,9 +15,31 @@ updated: 2026-08-27
 
 Live cafe search requires a Google Cloud project, required APIs, billing configuration, and restricted credentials. The brain cannot create or verify those credentials.
 
-**Affects:** live integration tasks T05–T07.
+**Affects:** live provider verification (T08). T05–T07 are built and verified against fixtures/mocks and do not need credentials.
 
-**Mitigation:** use contract fixtures/mocked provider responses for local development until credentials exist. Do not call mock data “live”.
+**Mitigation:** `CAFE_PROVIDER=fixture` (T07) serves committed fixtures through the real normalization path; automated tests mock the API-client and Maps-script boundaries. Do not call mock data “live”.
+
+## BLK-003 — Public deployment blocked until cost/abuse controls are configured
+
+**Status:** open until configured by the developer.
+
+Per RM0 ([[Non-Functional Requirements|NFR-009]]), public deployment cannot
+happen until all of the following exist:
+
+- Fastify rate limiting on `POST /api/v1/cafes/search`;
+- Google Cloud daily quota caps on both credentials;
+- a budget/usage alert on the Cloud project;
+- production API-key restrictions (browser key: referrer + Maps JS + Map ID;
+  server key: Places API + server/IP where practical);
+- a real Cloud-configured `VITE_GOOGLE_MAPS_MAP_ID` (not `DEMO_MAP_ID`).
+
+T07 delivered the **frontend** half of RM0 (request discipline). This blocker
+covers the server/infra half. It is not a T07 defect.
+
+**Affects:** T08, T14.
+
+**Mitigation:** local dev/CI run in `CAFE_PROVIDER=fixture` with no billable
+traffic; the Maps JS script is blocked in automated tests.
 
 ## BLK-002 — Deployment target not yet selected
 

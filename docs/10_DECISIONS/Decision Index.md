@@ -5,7 +5,7 @@ status: approved
 version: 1.0
 authority: navigation
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-08-28
 ---
 # Decision Index
 
@@ -17,6 +17,7 @@ updated: 2026-08-27
 | [[ADR-004 Favorites Local Storage]] | localStorage favourites for P0 | Accepted | persistence/scope |
 | [[ADR-005 Server-Side Places Proxy]] | server-side Places web-service boundary | Accepted | keys/API/deploy |
 | [[ADR-006 TanStack Query Server State]] | TanStack Query for search server state | Accepted | web data flow |
+| [[ADR-007 Cost-Safe Search Orchestration]] | disable auto-refetch/retry for the billable search query; add fixture-provider mode + Map ID env | Accepted | web data flow, cost, env |
 
 ## ADR status vocabulary
 

@@ -5,19 +5,20 @@ status: approved
 version: 1.0
 authority: execution
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-08-28
 ---
 # Current Execution Focus
 
 ## Active objective
 
-T06 (Maps JavaScript map integration) is DONE. No task is currently IN_PROGRESS; the executor has stopped after T06 as instructed rather than starting T07.
+T07 (search orchestration / cafe result list / map marker synchronization) is DONE. No task is IN_PROGRESS; the executor stopped after T07 as instructed rather than starting T08/T09/T10.
 
 ## Next READY tasks
 
-- `T07` — Search orchestration/list/marker sync (dependencies `T04`, `T05`, `T06` all DONE) — READY, not yet started.
+- `T09` — Local sort/filter controls (dependencies `T02`, `T07` DONE) — READY, not started. Will wire T02's `sortCafes`/`filterCafes` and resolve [[Open Questions|OQ-008]].
+- `T10` — localStorage favourites (dependencies `T02`, `T07` DONE) — READY, not started.
 
-`T09`/`T10` (which will wire up T02's `packages/domain` helpers) remain PENDING until `T07` is also DONE.
+`T08` (restricted-credential live provider smoke) is BLOCKED on [[Known Blockers|BLK-001]] and [[Known Blockers|BLK-003]] despite its dependency `T07` being DONE.
 
 ## Immediate human prerequisites
 

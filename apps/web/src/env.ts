@@ -4,11 +4,13 @@ import { formatValidationError } from '@bean-stalker/contracts';
 const ClientEnvSchema = z.object({
   VITE_API_BASE_URL: z.url(),
   VITE_GOOGLE_MAPS_BROWSER_KEY: z.string().min(1),
+  VITE_GOOGLE_MAPS_MAP_ID: z.string().min(1),
 });
 
 export interface ClientEnv {
   apiBaseUrl: string;
   googleMapsBrowserKey: string;
+  googleMapsMapId: string;
 }
 
 export function loadClientEnv(
@@ -23,6 +25,7 @@ export function loadClientEnv(
   return {
     apiBaseUrl: env.VITE_API_BASE_URL,
     googleMapsBrowserKey: env.VITE_GOOGLE_MAPS_BROWSER_KEY,
+    googleMapsMapId: env.VITE_GOOGLE_MAPS_MAP_ID,
   };
 }
 

@@ -1,12 +1,17 @@
 import { buildApp } from './app.js';
 import { loadServerEnv } from './env.js';
+import type { CafeProvider } from './providers/cafeProvider.js';
 import { GooglePlacesProvider } from './providers/google-places/googlePlacesProvider.js';
+import { FixtureCafeProvider } from './providers/fixtureCafeProvider.js';
 
 const env = loadServerEnv();
-const cafeProvider = new GooglePlacesProvider({
-  apiKey: env.googlePlacesServerKey,
-  timeoutMs: env.googlePlacesTimeoutMs,
-});
+const cafeProvider: CafeProvider =
+  env.cafeProvider === 'fixture'
+    ? new FixtureCafeProvider()
+    : new GooglePlacesProvider({
+        apiKey: env.googlePlacesServerKey,
+        timeoutMs: env.googlePlacesTimeoutMs,
+      });
 const app = await buildApp({ webOrigin: env.webOrigin, cafeProvider });
 
 async function shutdown(signal: NodeJS.Signals) {

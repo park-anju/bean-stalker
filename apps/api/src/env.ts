@@ -6,6 +6,10 @@ const ServerEnvSchema = z.object({
   WEB_ORIGIN: z.url(),
   GOOGLE_PLACES_SERVER_KEY: z.string().min(1),
   GOOGLE_PLACES_TIMEOUT_MS: z.coerce.number().int().positive(),
+  // Selects the cafe-search provider. `fixture` (dev/test only) serves
+  // committed fixtures with no billable Google traffic — see
+  // docs/13_OPERATIONS/Local Development Runbook.md.
+  CAFE_PROVIDER: z.enum(['live', 'fixture']).default('live'),
 });
 
 export interface ServerEnv {
@@ -13,6 +17,7 @@ export interface ServerEnv {
   webOrigin: string;
   googlePlacesServerKey: string;
   googlePlacesTimeoutMs: number;
+  cafeProvider: 'live' | 'fixture';
 }
 
 export function loadServerEnv(raw: NodeJS.ProcessEnv = process.env): ServerEnv {
@@ -27,5 +32,6 @@ export function loadServerEnv(raw: NodeJS.ProcessEnv = process.env): ServerEnv {
     webOrigin: env.WEB_ORIGIN,
     googlePlacesServerKey: env.GOOGLE_PLACES_SERVER_KEY,
     googlePlacesTimeoutMs: env.GOOGLE_PLACES_TIMEOUT_MS,
+    cafeProvider: env.CAFE_PROVIDER,
   };
 }

@@ -5,7 +5,7 @@ status: approved
 version: 1.0
 authority: canonical
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-08-28
 ---
 # Non-Functional Requirements
 
@@ -35,6 +35,23 @@ API logs include request correlation, route/outcome/latency and provider failure
 
 ## NFR-009 — cost discipline
 External queries are bounded, duplicate refetches are controlled and Places field masks are minimal.
+
+### RM0 — portfolio no-cost operating constraint
+
+Bean Stalker's public portfolio deployment must be designed to remain within
+no-cost third-party usage under expected portfolio traffic. The application must
+avoid unnecessary Google Places and Maps requests. **Accidental paid usage is a
+release blocker**, not a tuning issue.
+
+- **T07 (frontend request discipline)** — one committed `SearchCenter` produces
+  at most one provider request; rerenders, window focus, network reconnect,
+  component remount, map pan/zoom, marker/card selection and error auto-retry
+  must never issue a provider request; identical fresh searches are served from
+  cache. Implemented via [[ADR-007 Cost-Safe Search Orchestration]].
+- **Deferred to release/hardening tasks** — Fastify rate limiting, Google Cloud
+  daily quota caps, budget/usage alerts, production API-key restrictions,
+  server-side caching, and live billing-enabled verification. Tracked as
+  [[Known Blockers|BLK-003]].
 
 ## NFR-010 — browser support
 Target current evergreen desktop/mobile browsers that support required APIs; unsupported geolocation falls back to manual location selection.
