@@ -59,11 +59,11 @@ updated: 2026-08-28
 
 ## OQ-008 — Rating-sort tie-break direction for `userRatingCount`
 
-**Question:** [[Ranking and Filtering Rules]] says rating ties "may use rating count then distance" but does not state whether a higher or lower rating count should win the tie.
+**Status:** RESOLVED during T09.
 
-**Baseline assumption (implemented in T02):** higher `userRatingCount` wins the tie (descending), on the reasoning that a rating backed by more reviews is more socially validated and should surface first; distance (ascending) is the final tiebreaker. This is a minor UI-ordering detail, not a P0 correctness question — flagged per instruction rather than silently assumed.
+**Original question:** [[Ranking and Filtering Rules]] said rating ties "may use rating count then distance" but did not state whether a higher or lower rating count should win the tie.
 
-**Resolution point:** confirm or override when sort UI is built (T09) if the assumption feels wrong in practice. T07 did **not** touch this — it renders results in the order the API returns them (provider `rankPreference: DISTANCE`) and adds no sort control.
+**Resolution:** T09 built the sort UI and confirmed the T02 assumption as the product decision. [[Ranking and Filtering Rules]] (v1.1, rank-4 canonical owner of sort rules) now states the tie-break explicitly: rating DESC → `userRatingCount` DESC (absent counts as 0) → `distanceMeters` ASC → stable order. Rationale: a rating backed by more reviews is more socially validated; when review counts also tie, the closer cafe wins. No higher-authority source specifies otherwise, so this was a doc clarification, not an ADR. `sortCafes()` already implements it — no code change. Verified by `filterState.test.ts` against the canonical `[4.8/50/100m, 4.8/500/900m, 4.8/500/300m, unrated]` fixture → order `C, B, A, …, unrated last`.
 
 ## OQ-009 — Task Graph does not show T05 depending on T02 for shared distance calculation
 
@@ -91,4 +91,6 @@ updated: 2026-08-28
 - `rankPreference: 'DISTANCE'` — neutral "nearby" ordering; deterministic; independent of OQ-008's rating tie-break.
 - `staleTime: 5 min`, `gcTime: 10 min` — [[Search Result Freshness]]'s "short, on the order of minutes".
 
-**Resolution point:** confirm or override when T09 builds user-facing radius/rank controls and when T11 hardens freshness/race behaviour. None of these is a P0 correctness question — all are trivially revisable single constants with no contract impact.
+**Partially informed by T09:** T09 added local sort/filter controls but deliberately did **not** add a user-facing *search radius* or *provider rank* control (that would change candidate retrieval and is out of T09 scope). It did fix the local‑UX defaults it owns, recorded in `apps/web/src/cafes/filterState.ts`: default filters = `{ minRating: 0, openNowOnly: false, sortBy: 'DISTANCE' }` (hides nothing, preserves T07 order); minimum‑rating choices = Any / 3+ / 3.5+ / 4+ / 4.5+. `rankPreference: 'DISTANCE'` is now doubly reasonable since the default local sort is also distance.
+
+**Still open:** `radiusMeters` (2000), `maxResults` (10), `staleTime`/`gcTime` (5/10 min) remain T07 assumptions. **Resolution point:** confirm or override if/when a radius control is added and when T11 hardens freshness/race behaviour. None is a P0 correctness question.

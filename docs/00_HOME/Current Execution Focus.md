@@ -11,14 +11,13 @@ updated: 2026-08-28
 
 ## Active objective
 
-T07 (search orchestration / cafe result list / map marker synchronization) is DONE. No task is IN_PROGRESS; the executor stopped after T07 as instructed rather than starting T08/T09/T10.
+T09 (local sort/filter controls) is DONE — minimum-rating + Open Now filters and Distance/Rating sort operate entirely on the fetched `Cafe[]` via T02's helpers, with zero additional provider requests. [[Open Questions|OQ-008]] is resolved. No task is IN_PROGRESS; the executor stopped after T09 as instructed rather than starting T10/T08.
 
 ## Next READY tasks
 
-- `T09` — Local sort/filter controls (dependencies `T02`, `T07` DONE) — READY, not started. Will wire T02's `sortCafes`/`filterCafes` and resolve [[Open Questions|OQ-008]].
-- `T10` — localStorage favourites (dependencies `T02`, `T07` DONE) — READY, not started.
+- `T10` — localStorage favourites (dependencies `T02`, `T07` DONE) — READY, not started. The only unblocked task. Will wire T02's `isFavorite`/`addFavorite`/`removeFavorite`, add a versioned `localStorage` envelope, favourite toggles on `CafeCard`, and populate `/favorites`.
 
-`T08` (restricted-credential live provider smoke) is BLOCKED on [[Known Blockers|BLK-001]] and [[Known Blockers|BLK-003]] despite its dependency `T07` being DONE.
+`T08` (restricted-credential live provider smoke) is BLOCKED on [[Known Blockers|BLK-001]] and [[Known Blockers|BLK-003]] despite its dependency `T07` being DONE; `T11`/`T12` sit behind it.
 
 ## Immediate human prerequisites
 

@@ -30,6 +30,7 @@ const SELECTED_PIN = {
  */
 export class MarkerLayer {
   private readonly markers = new Map<string, TrackedMarker>();
+  private lastPannedTo: string | null = null;
 
   constructor(
     private readonly map: google.maps.Map,
@@ -68,13 +69,18 @@ export class MarkerLayer {
 
   setSelected(selectedPlaceId: string | null, cafes: Cafe[]): void {
     const byId = new Map(cafes.map((cafe) => [cafe.placeId, cafe]));
+    // Pan only when the selection genuinely changes — a re-sort or filter
+    // change that leaves the same cafe selected must not move the map.
+    const selectionChanged = selectedPlaceId !== this.lastPannedTo;
+    this.lastPannedTo = selectedPlaceId;
+
     for (const [placeId, tracked] of this.markers) {
       const isSelected = placeId === selectedPlaceId;
       tracked.marker.content = isSelected ? new this.lib.PinElement(SELECTED_PIN).element : null;
       tracked.marker.zIndex = isSelected ? 1 : null;
 
       const cafe = byId.get(placeId);
-      if (isSelected && cafe) {
+      if (isSelected && cafe && selectionChanged) {
         this.map.panTo({ lat: cafe.location.latitude, lng: cafe.location.longitude });
       }
     }

@@ -87,6 +87,9 @@ importers:
       '@bean-stalker/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@bean-stalker/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@tanstack/react-query':
         specifier: ^5.102.5
         version: 5.102.5(react@19.2.8)
