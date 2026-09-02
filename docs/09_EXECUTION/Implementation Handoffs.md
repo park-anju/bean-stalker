@@ -5,7 +5,7 @@ status: approved
 version: 1.0
 authority: execution
 owner: Project Owner
-updated: 2026-08-28
+updated: 2026-09-03
 ---
 # Implementation Handoffs
 
@@ -621,3 +621,76 @@ Append verified evidence between implementation tasks/sessions. Do not replace h
 - **Provider-call proof:** Real Google Places requests made: **0**. Real Google Maps billing required: **NO**. All verification used fixtures, mocked providers, injected fake providers, and Playwright route interception; the e2e Google Maps script is `route.abort()`ed.
 - **Remaining blockers (preserved):** [[Known Blockers|BLK-001]] Google Cloud Billing/credentials; [[Known Blockers|BLK-003]] Google-side quotas/budget/key restrictions + `trustProxy`; **[[Known Blockers|BLK-004]] (new)** durable/shared production usage guard; T08 live provider smoke; deployment-specific proxy/client identity. `OQ-010`/`OQ-011`/`OQ-012` unchanged.
 - **Next safe task:** **none is READY.** T08 stays BLOCKED. Per the session's explicit instruction, stopping here — not starting T08, release, deployment or PWA work.
+
+---
+
+### `H06–H07` — Pre-T08 release hardening II (roadmap normalization + secrets/backend security)
+
+- **Date:** 2026-09-03
+- **Executor:** Claude Code
+- **Starting commit:** `3a4d498` (Record T10 implementation handoff evidence) — the H02–H05 work committed at `6b3344f`/`ed8b1c3` is the immediate parent of this milestone.
+- **Ending commit:** `cf93772` (Implement H06-H07: secrets & backend security hardening)
+- **Nature:** a second controlled hardening milestone run while T08 is blocked. **Does NOT unblock T08.** No Google Cloud APIs enabled, no real credentials, **0 real Google Maps Platform / Places requests.** [[ADR-009 API Security Posture]] records the security decisions; [[Environment Contract]] v1.1 holds the full env-variable inventory; [[Threat Model]] v1.1 holds the updated controls.
+
+- **Roadmap normalization (goal 1).** H06–H10 are now first-class governed tasks:
+  - [[Task Status]] — replaced the "H02–H05" table with a "Pre-T08 release-hardening milestones (H02–H10)" table. **H02–H05 DONE**, **H06 DONE** (deps H02–H05), **H07 DONE** (deps H06), **H08 READY** (deps H07) — *now the single next READY task*, **H09 PENDING** (deps H08), **H10 PENDING** (deps H09).
+    - H06 — Secrets & Configuration Hardening
+    - H07 — Backend Security Hardening
+    - H08 — Mobile & Accessibility QA
+    - H09 — Architecture Documentation
+    - H10 — Portfolio README Preparation
+  - [[Task Graph]] v1.1 — added the `H02→H03→H04→H05→H06→H07→H08→H09→H10` chain to the mermaid diagram, off the T07/T10 hardening branch.
+  - T08 is **unchanged: BLOCKED**. The `T`-line gating ([[Known Blockers|BLK-001]]/[[Known Blockers|BLK-003]]) is untouched.
+
+- **Baseline.** `node scripts/validate-brain.mjs` **PASSED** at session start (78 governed notes — the `Pre-T08 Project Checkpoint.md` frontmatter fix from the H02–H05 session was already in place). `git grep -nE "AIza[0-9A-Za-z_-]{20,}"` over all tracked history → **no matches**. `git log -p --all -S "GOOGLE_PLACES_SERVER_KEY="` → only empty `.env.example` placeholder lines. **No real secret has ever been committed; no rotation/revocation required.**
+
+- **H06 — Secrets & Configuration Hardening.**
+  - **Credential classification (now governed in [[ADR-009 API Security Posture]] + [[Environment Contract]] + [[API Key Boundaries]] v1.1).** Exactly **one** secret exists: `GOOGLE_PLACES_SERVER_KEY` (server-only, never sent to the browser, never logged — H02 redaction covers it). `VITE_GOOGLE_MAPS_BROWSER_KEY` and `VITE_GOOGLE_MAPS_MAP_ID` are **public configuration** — browser-visible by design, protected Google-side by HTTP-referrer + API restrictions, **not** by concealment. Misclassifying the browser key as a secret is explicitly rejected.
+  - **Fail-closed live config.** `apps/api/src/env.ts` rewritten: `GOOGLE_PLACES_SERVER_KEY` and `PROVIDER_MONTHLY_REQUEST_LIMIT` are `optional()` at the schema level (fixture mode is credential-free) but a `superRefine` gated on `if (env.CAFE_PROVIDER !== 'live') return;` adds a validation issue for each when missing under `CAFE_PROVIDER=live`. `main.ts` additionally hard-throws before constructing `GooglePlacesProvider` / `InMemoryProviderUsageGuard` if either is absent. Net effect: **live mode cannot boot without both**; there is no production-unsafe default that silently reaches Google.
+  - **Provider timeout is now validated + bounded config.** `GOOGLE_PLACES_TIMEOUT_MS` — `z.coerce.number().int().min(100).max(30_000).default(10_000)`. Absurd (`600000`) and negative values are rejected. Threaded into `GooglePlacesProvider({ apiKey, timeoutMs })`.
+  - **URL / origin validation.** New shared `HttpOriginSchema` (`packages/contracts/src/env.ts`) — a bare `scheme://host[:port]` validator (regex-based; contracts `lib` is `ES2022` only, no `URL` global), trims a trailing slash, rejects any path/query/fragment and non-http(s) schemes. Applied to `WEB_ORIGIN` (api) and `VITE_API_BASE_URL` (web). Exported from `@bean-stalker/contracts`.
+  - **Env-error safety.** `formatValidationError` prints **field name + issue message only, never the offending value** — a bad `PORT` alongside a populated `GOOGLE_PLACES_SERVER_KEY` throws an error mentioning `PORT` and **not** the key. Covered by a test.
+  - **Frontend build secret-leak guard.** `scripts/check-frontend-dist-secrets.mjs` scans `apps/web/dist` for `GOOGLE_PLACES_SERVER_KEY`, `X-Goog-Api-Key` / `x-goog-api-key`, `places.googleapis.com`, plus any `FRONTEND_SECRET_SENTINELS` (CSV env). Exit 1 on a hit, 2 if `dist` is missing, 0 clean. **Wired into `apps/web`'s `build` script** (`tsc --noEmit && vite build && node ../../scripts/check-frontend-dist-secrets.mjs`) so `pnpm build` **fails** if a server-only marker ever reaches the bundle. Root `package.json` gained `security:frontend` → `pnpm --filter @bean-stalker/web run build`. Verified it actually detects (forced-sentinel run exits 1; clean run reports `scanned 3 file(s) ... no server-only markers`).
+  - **Secret env-file hygiene.** `.gitignore` already ignores `.env` / `.env.*` (keeps `.env.example`). No real `.env` is tracked (`git ls-files | grep -E '\.env$'` → nothing). `.env.example` files rewritten with per-variable **sensitivity classification** comments; root `.env.example` reduced to a pointer ("Bean Stalker does not use a root `.env` file").
+  - **Tests:** `packages/contracts/src/env.test.ts` (4 — bare origin accepted, trailing slash stripped, path/query/fragment rejected, non-http rejected); `apps/api/src/test/env.test.ts` **rewritten** (live fully-populated `.toEqual`; fails closed without key / without monthly limit; `0` accepted, negative rejected; fixture starts credential-free; absurd/negative timeout rejected; `WEB_ORIGIN` non-origin rejected + trailing-slash normalized; non-numeric `PORT`; secret never echoed in an error); `apps/web/src/env.test.ts` (+ origin-validation + trailing-slash cases + "server-only credential never surfaces in resolved browser config").
+
+- **H07 — Backend Security Hardening.**
+  - **CORS.** Audited `@fastify/cors` with a static string `origin: webOrigin`: it sets `Access-Control-Allow-Origin: <that exact origin>` for every request and **never reflects an arbitrary `Origin`**. Safe as-is → no code change, only tests. A request with `Origin: http://evil.example` gets back `http://localhost:5173` (the configured value); a no-`Origin` server-to-server request still works.
+  - **Security response headers.** New `apps/api/src/security.ts` → `registerSecurity(app)` adds a small explicit `onSend` hook (deliberately **not** `@fastify/helmet` — see ADR-009 §"what is NOT added") setting `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY` on **every** response including errors and 404s. CSP / HSTS / Permissions-Policy / COOP / CORP are consciously omitted (API serves only JSON; HSTS + `trustProxy` are deployment-topology decisions → [[Known Blockers|BLK-003]]).
+  - **Request body size limit.** `Fastify({ bodyLimit: 16 * 1024 })` (`REQUEST_BODY_LIMIT_BYTES`). An over-limit body is rejected by Fastify **during parsing — before the route handler, the rate limiter, and the usage guard**. It reaches `setErrorHandler`'s `statusCode < 500` branch → canonical **`VALIDATION_ERROR`** envelope at **HTTP 413**. No `bodyLimit` / `16384` / "too large" string leaks into the response. Verified: `searchNearby` not called, `usageGuard.getStatus().used === 0`. No new error code (kept minimal); [[Error Catalog]] documents `VALIDATION_ERROR` as "400 / 413", `openapi.yaml` gained 413.
+  - **Request / provider timeouts.** `Fastify({ requestTimeout: 20_000 })` (`REQUEST_TIMEOUT_MS`). Provider timeout is `GOOGLE_PLACES_TIMEOUT_MS` (H06, validated 100–30 000 ms, default 10 000). A provider timeout surfaces as a bounded **503 `PROVIDER_UNAVAILABLE`** envelope, never a raw error.
+  - **Error exposure.** `setErrorHandler` maps `ProviderError` → its bounded code; `ZodError` / `statusCode < 500` → `VALIDATION_ERROR` 400/413; everything else → generic **`INTERNAL_ERROR`** 500 `{"message":"An unexpected error occurred."}`. Verified with a thrown `Error('ENOENT: /home/user/private/project/secret.ts — SECRET_INTERNAL_DETAIL_123')`: response is the generic 500 envelope; neither the path nor the sentinel appears in the body. No stack traces, filesystem paths, raw provider errors, env values or credentials are ever returned.
+  - **Surface area / unsupported methods.** `setNotFoundHandler` → canonical **`NOT_FOUND`** envelope at 404 (new error code in `ErrorCodeSchema`), replacing Fastify's default that leaks the route pattern (`Route PUT:/api/v1/cafes/search not found`). `PUT /api/v1/cafes/search` and `DELETE /health` both return the `NOT_FOUND` envelope with **no business logic invoked**.
+  - **`trustProxy`.** Left at the Fastify default (**off**). Not enabled to "make production rate limiting work" — that is a deployment-topology decision recorded in [[Known Blockers|BLK-003]] and [[ADR-009 API Security Posture]].
+  - **Health endpoint.** Unchanged — returns exactly `{"status":"ok"}`, no env / keys / counters / period / limit.
+  - **No security theatre.** No JWT, sessions, CSRF tokens, OAuth, captcha, WAF emulation, SIEM, IDS, or DB encryption were added — the threat model has no accounts, no cookies, no user database and no mutation endpoints. Recorded in [[ADR-009 API Security Posture]] and [[Threat Model]] "Out of scope".
+  - **Contract change:** `packages/contracts` `ErrorCodeSchema` gained `'NOT_FOUND'`; `errors.test.ts` updated. Envelope shape unchanged.
+  - **Tests:** `apps/api/src/test/security.test.ts` (10) — CORS grants configured origin / never reflects evil origin / no-Origin works; security headers on health + search + 404; oversized body → 4xx `VALIDATION_ERROR`, provider + guard untouched, no limit value leaked; unknown route → canonical `NOT_FOUND` 404, no route pattern; `PUT` on a known path → `NOT_FOUND`, business logic not invoked; leaky unexpected error → generic 500, path + sentinel absent; provider timeout → bounded 503; health returns only `{status:'ok'}`.
+
+- **Regression (H02–H05 + T07/T09/T10 guarantees re-verified).** Route pipeline unchanged (`validate → per-client rate limit → global usage guard → provider`). H02 log redaction, H03 rate limiter, H04 usage-guard atomicity + no-refund, H05 429/503 copy all still pass. Local filter / sort / favourites / `/favorites` route / map pan-zoom / selection still cause **0 provider requests**; `retry: false` still in place. The pre-existing route tests pass unchanged. Full RM0 e2e green.
+
+- **Commands run:**
+
+| Command | Exact result |
+|---|---|
+| `node scripts/validate-brain.mjs` | **PASSED** — 22 required files, 78 governed notes, 78 unique IDs, 0 unresolved wiki links |
+| `pnpm lint` | passed — `eslint .`, exit 0, 0 problems |
+| `pnpm format` | passed — `prettier --check .` clean (3 test files auto-formatted mid-session, then re-verified) |
+| `pnpm typecheck` | passed — all 4 packages `typecheck: Done` |
+| `pnpm test` | passed — **288 tests**: contracts 28, domain 31, apps/web 151, apps/api 78 (+ `env.test.ts` rewrite, + `security.test.ts` 10; `contracts` +4 `env.test.ts`) |
+| `pnpm build` | passed — 4 packages; `apps/web build: frontend-secret-check PASSED — scanned 3 file(s) in apps/web/dist, no server-only markers` |
+| `pnpm e2e` | passed — **25/25** chromium |
+| `pnpm dev` (`CAFE_PROVIDER=fixture`, cold) | clean start; `Server listening at http://127.0.0.1:3001` |
+| `curl -i http://127.0.0.1:3001/health` | `HTTP/1.1 200`, `x-content-type-options: nosniff`, `referrer-policy: no-referrer`, `x-frame-options: DENY`, body `{"status":"ok"}` |
+| `curl -i -X POST .../cafes/search -H 'origin: http://evil.example'` | `access-control-allow-origin: http://localhost:5173` (evil origin never reflected) |
+| `curl -i http://127.0.0.1:3001/api/v1/nope` | `HTTP/1.1 404`, body `{"error":{"code":"NOT_FOUND",...}}` — no route pattern |
+| `curl -X PUT .../cafes/search` | `{"error":{"code":"NOT_FOUND",...}}` — business logic not invoked |
+| `curl -i -X POST .../cafes/search` with a ~70 KB body | `HTTP/1.1 413`, body `{"error":{"code":"VALIDATION_ERROR","message":"The request could not be processed.",...}}` — no limit value |
+| forced-sentinel run of `check-frontend-dist-secrets.mjs` | exit 1, reports the planted marker; clean run exit 0 `scanned 3 file(s)` |
+| `git grep -nE "AIza[0-9A-Za-z_-]{20,}"` (all tracked history) | **no matches** |
+| `git ls-files \| grep -E '\.env$\|\.env\.local\|\.env\.production'` | **no real `.env` tracked** |
+| `grep -rE "GOOGLE_PLACES_SERVER_KEY\|places.googleapis.com" apps/web/dist/` | **clean** |
+
+- **Provider-call proof:** Real Google Places requests made: **0**. Real Google credentials used: **0**. Google Cloud Billing required: **NO**. All verification used fixtures, mocked/injected providers, and Playwright route interception; the e2e Google Maps script is `route.abort()`ed.
+- **Remaining blockers (preserved):** [[Known Blockers|BLK-001]] Google Cloud Billing / credentials; [[Known Blockers|BLK-003]] Google-side quotas / budget / key restrictions + `trustProxy` + HSTS for the chosen deployment topology; [[Known Blockers|BLK-004]] durable / shared production usage guard (application-layer work does **not** solve it); T08 live provider smoke. `OQ-010` / `OQ-011` / `OQ-012` unchanged (no genuine evidence to resolve them); `OQ-013` (immediate-Retry behaviour on `PROVIDER_CAPACITY_EXHAUSTED`) newly recorded.
+- **Next safe task:** **H08 — Mobile & Accessibility QA** is now the single next `READY` task (deps H07 satisfied). T08 stays **BLOCKED**. Per the session's explicit instruction, stopping here — not starting H08, T08, release, deployment or PWA work.
