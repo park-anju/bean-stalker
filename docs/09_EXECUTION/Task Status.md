@@ -30,13 +30,23 @@ Status vocabulary: `PENDING`, `READY`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 | T14 | deploy with safe env/key restrictions | T13 | PENDING | [[Production Deployment Runbook]], [[Threat Model]] |
 | T15 | README/screenshots/demo/resume evidence | T14 | PENDING | [[Golden Demo Scenario]], [[Release Readiness]] |
 
+## Pre-T08 hardening milestone (H02–H05)
+
+A controlled hardening milestone run while T08 is blocked. Does **not** unblock T08.
+
+| ID | Item | Status | Canonical context |
+|---|---|---|---|
+| H02 | Privacy-safe logging audit + hardening | DONE | [[Privacy Boundaries]], [[Observability Runbook]] |
+| H03 | Fastify per-client search rate limiting | DONE | [[API Cost Guardrail Runbook]], [[ADR-008 Metered Provider Cost Controls]] |
+| H04 | Global metered-provider usage guard abstraction | DONE (in-memory only — [[Known Blockers|BLK-004]]) | [[ADR-008 Metered Provider Cost Controls]] |
+| H05 | Graceful rate/capacity exhaustion behaviour | DONE | [[Error Catalog]], [[UX Contract]] |
 
 ## Notes
 
-- With `T09` and `T10` `DONE`, **no task is currently `READY`**. Every remaining task (`T11`–`T15`) sits behind `T08`.
-- `T08` is `BLOCKED` on [[Known Blockers|BLK-001]] (real restricted Google credentials) and [[Known Blockers|BLK-003]]; its dependency `T07` is `DONE`. It is the gate for the rest of the graph.
+- With `T09` and `T10` `DONE` and H02–H05 complete, **no task is currently `READY`**. Every remaining task (`T11`–`T15`) sits behind `T08`.
+- `T08` is `BLOCKED` on [[Known Blockers|BLK-001]] (real restricted Google credentials) and [[Known Blockers|BLK-003]]; its dependency `T07` is `DONE`. It is the gate for the rest of the graph. H02–H05 delivered the in-process server-side cost/privacy controls that [[Known Blockers|BLK-003]] listed; the Google-side and deployment-topology configuration, plus a durable usage guard ([[Known Blockers|BLK-004]]), remain.
 - `T11` needs `T08`; `T12` needs `T09` + `T10` + `T11`; `T13`–`T15` follow. All `PENDING` until the developer configures Google credentials/quotas.
-- Ordinary MVP feature implementation is complete after T10 ([[MVP Scope]] P0 feature set); what remains is a live smoke, failure/race hardening, polish, verification, deploy and demo packaging.
+- Ordinary MVP feature implementation is complete after T10 ([[MVP Scope]] P0 feature set); the pre-T08 hardening milestone (H02–H05) is also complete; what remains is a live smoke, failure/race hardening, polish, verification, deploy and demo packaging.
 - One minor deferred item is tracked as [[Open Questions|OQ-012]] (a "favourites only" filter on the Discovery list).
 
 ## Update rule

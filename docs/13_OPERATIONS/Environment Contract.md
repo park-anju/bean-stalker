@@ -37,10 +37,23 @@ WEB_ORIGIN=http://localhost:5173
 GOOGLE_PLACES_SERVER_KEY=<server-only secret>
 GOOGLE_PLACES_TIMEOUT_MS=<bounded timeout>
 CAFE_PROVIDER=<live | fixture>
+LOG_LEVEL=<fatal|error|warn|info|debug|trace|silent>   # default info
+SEARCH_RATE_LIMIT_MAX=<int ≥ 1>                          # default 10
+SEARCH_RATE_LIMIT_WINDOW_MS=<int ≥ 1000>                 # default 60000
+PROVIDER_MONTHLY_REQUEST_LIMIT=<int ≥ 0>                 # required when CAFE_PROVIDER=live
 ```
 
 `CAFE_PROVIDER` defaults to `live`. `fixture` (dev/test only) serves committed
 fixtures with no billable Google traffic and is never valid in production.
+
+`LOG_LEVEL` / `SEARCH_RATE_LIMIT_*` are validated operational config (H03).
+`PROVIDER_MONTHLY_REQUEST_LIMIT` (H04, [[ADR-008 Metered Provider Cost Controls]])
+is the global metered-provider attempt cap for a UTC month: **required** in
+`live` mode (live cannot inherit an unbounded default), ignored in `fixture`
+mode, and `0` is a deliberate fully-fail-closed value. The in-memory guard that
+enforces it is **not** a production financial hard cap — [[Known Blockers|BLK-004]].
+Deployment must additionally set `trustProxy` for the real reverse-proxy
+topology before `request.ip` is trusted as the rate-limit client identity.
 
 ## Rules
 

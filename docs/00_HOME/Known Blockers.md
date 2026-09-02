@@ -26,20 +26,49 @@ Live cafe search requires a Google Cloud project, required APIs, billing configu
 Per RM0 ([[Non-Functional Requirements|NFR-009]]), public deployment cannot
 happen until all of the following exist:
 
-- Fastify rate limiting on `POST /api/v1/cafes/search`;
+- ~~Fastify rate limiting on `POST /api/v1/cafes/search`~~ — **done (H03)**;
+- ~~a global metered-provider usage guard~~ — **abstraction + in-memory impl done
+  (H04)**, but a durable/shared production implementation is still required
+  ([[Known Blockers|BLK-004]]);
+- ~~graceful capacity-exhaustion behaviour~~ — **done (H05)**;
+- ~~privacy-safe application logging~~ — **done (H02)**;
 - Google Cloud daily quota caps on both credentials;
 - a budget/usage alert on the Cloud project;
 - production API-key restrictions (browser key: referrer + Maps JS + Map ID;
   server key: Places API + server/IP where practical);
-- a real Cloud-configured `VITE_GOOGLE_MAPS_MAP_ID` (not `DEMO_MAP_ID`).
+- a real Cloud-configured `VITE_GOOGLE_MAPS_MAP_ID` (not `DEMO_MAP_ID`);
+- deployment-specific `trustProxy` / client-identity configuration for the
+  per-client rate limiter once the reverse-proxy topology is known.
 
-T07 delivered the **frontend** half of RM0 (request discipline). This blocker
-covers the server/infra half. It is not a T07 defect.
+T07 delivered the **frontend** half of RM0 (request discipline); the pre-T08
+hardening milestone (H02–H05) delivered the in-process server half. This blocker
+now covers only the **Google-side and deployment-topology** configuration.
 
 **Affects:** T08, T14.
 
 **Mitigation:** local dev/CI run in `CAFE_PROVIDER=fixture` with no billable
 traffic; the Maps JS script is blocked in automated tests.
+
+## BLK-004 — Global usage guard is not a production financial hard cap
+
+**Status:** open until a durable/shared implementation exists or an equivalent infrastructure guard is in place.
+
+The H04 `ProviderUsageGuard` currently has only an **in-memory** implementation
+(`InMemoryProviderUsageGuard`). It resets on process restart and is not shared
+across instances, so it is test/development infrastructure — not a production
+budget enforcement mechanism ([[ADR-008 Metered Provider Cost Controls]]).
+
+**Public release cannot happen until** the usage guard uses a durable/shared
+implementation appropriate to the chosen deployment topology, **OR** an
+equivalent infrastructure-level hard guard (Google Cloud service quota + budget
+cap that actually stops requests) is demonstrably provided.
+
+**Affects:** T14 (deploy), public release. Not a blocker for T08 (small
+controlled live smoke) or local development.
+
+**Mitigation:** the interface (`tryConsume`/`getStatus`, atomic
+check-and-consume) is designed so a durable backend can be substituted without
+touching the route.
 
 ## BLK-002 — Deployment target not yet selected
 

@@ -54,6 +54,32 @@ describe('SearchStatePanel', () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
+  it('shows bounded "searching too quickly" copy + retry for a 429 RATE_LIMITED, not internal detail', async () => {
+    const user = userEvent.setup();
+    const { onRetry } = renderPanel({
+      status: 'error',
+      error: new CafeSearchError('RATE_LIMITED', 'ip 203.0.113.9 over 10/min'),
+      canRetry: true,
+    });
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent(/too quickly/i);
+    expect(alert).not.toHaveTextContent(/203\.0\.113\.9/);
+    await user.click(screen.getByRole('button', { name: /retry search/i }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows bounded "temporarily unavailable" copy + retry for 503 PROVIDER_CAPACITY_EXHAUSTED, no counter/pricing', () => {
+    renderPanel({
+      status: 'error',
+      error: new CafeSearchError('PROVIDER_CAPACITY_EXHAUSTED', 'month 2026-03 cap 700 reached'),
+      canRetry: true,
+    });
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent(/temporarily unavailable/i);
+    expect(alert).not.toHaveTextContent(/2026-03|700/);
+    expect(screen.getByRole('button', { name: /retry search/i })).toBeInTheDocument();
+  });
+
   it('omits the retry button for a non-retryable error', () => {
     renderPanel({
       status: 'error',

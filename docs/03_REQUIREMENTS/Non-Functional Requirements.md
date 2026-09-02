@@ -33,6 +33,17 @@ TypeScript strictness, shared contracts, bounded modules, linting and tests are 
 ## NFR-008 — observability
 API logs include request correlation, route/outcome/latency and provider failure category without secrets or precise user coordinates at unnecessary precision.
 
+**Logging policy (H02, enforced in `apps/api/src/logging.ts`):** the request
+serializer emits only `method` + path (query strings stripped); the client IP
+(`remoteAddress`/`remotePort`), hostname and request headers are **not** logged;
+the error serializer whitelists `type` + `message` + `stack` and drops every
+other own-property so a thrown error cannot carry a raw provider payload into a
+log line; a `redact` list removes credential- and coordinate-shaped fields from
+any manual log call. Retained: `reqId`, method, path, status code, response
+time, and bounded application error codes (`{ providerErrorCode }`). Regression
+tests capture emitted log lines and assert conspicuous test coordinates, a fake
+key and an attached-payload sentinel never appear.
+
 ## NFR-009 — cost discipline
 External queries are bounded, duplicate refetches are controlled and Places field masks are minimal.
 
@@ -48,10 +59,19 @@ release blocker**, not a tuning issue.
   component remount, map pan/zoom, marker/card selection and error auto-retry
   must never issue a provider request; identical fresh searches are served from
   cache. Implemented via [[ADR-007 Cost-Safe Search Orchestration]].
-- **Deferred to release/hardening tasks** — Fastify rate limiting, Google Cloud
-  daily quota caps, budget/usage alerts, production API-key restrictions,
-  server-side caching, and live billing-enabled verification. Tracked as
-  [[Known Blockers|BLK-003]].
+- **Server request discipline (H03/H04/H05, [[ADR-008 Metered Provider Cost Controls]])** —
+  a per-client fixed-window rate limit on `POST /api/v1/cafes/search` (429
+  `RATE_LIMITED`); a global fail-closed usage guard that consumes one allowance
+  unit before each provider attempt, does not refund on provider failure, and
+  rejects with 503 `PROVIDER_CAPACITY_EXHAUSTED` once the configured monthly
+  attempt cap is reached; validation/rate-limit/guard rejections never reach the
+  provider. `CAFE_PROVIDER=live` requires an explicit
+  `PROVIDER_MONTHLY_REQUEST_LIMIT`.
+- **Still deferred to Google-side / deployment tasks** — Google Cloud daily
+  quota caps, budget/usage alerts, production API-key restrictions, a
+  **durable/shared** production usage-guard implementation ([[Known Blockers|BLK-004]]),
+  `trustProxy` configuration, and live billing-enabled verification. Tracked as
+  [[Known Blockers|BLK-003]] / [[Known Blockers|BLK-004]].
 
 ## NFR-010 — browser support
 Target current evergreen desktop/mobile browsers that support required APIs; unsupported geolocation falls back to manual location selection.

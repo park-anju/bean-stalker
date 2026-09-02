@@ -114,6 +114,25 @@ describe('searchCafes — errors', () => {
     await expect(searchCafes(request)).rejects.toMatchObject({ code: 'INTERNAL_ERROR' });
   });
 
+  it('maps a 429 RATE_LIMITED envelope to a typed CafeSearchError', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ error: { code: 'RATE_LIMITED', message: 'slow down' } }, { status: 429 }),
+    );
+    await expect(searchCafes(request)).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+  });
+
+  it('maps a 503 PROVIDER_CAPACITY_EXHAUSTED envelope to a typed CafeSearchError', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { error: { code: 'PROVIDER_CAPACITY_EXHAUSTED', message: 'unavailable' } },
+        { status: 503 },
+      ),
+    );
+    await expect(searchCafes(request)).rejects.toMatchObject({
+      code: 'PROVIDER_CAPACITY_EXHAUSTED',
+    });
+  });
+
   it('maps a network failure to PROVIDER_UNAVAILABLE without leaking the raw error', async () => {
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
     await expect(searchCafes(request)).rejects.toMatchObject({

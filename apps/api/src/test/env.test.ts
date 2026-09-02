@@ -6,10 +6,12 @@ const validEnv = {
   WEB_ORIGIN: 'http://localhost:5173',
   GOOGLE_PLACES_SERVER_KEY: 'test-server-key',
   GOOGLE_PLACES_TIMEOUT_MS: '5000',
+  // live mode requires an explicit global usage-guard limit (H04)
+  PROVIDER_MONTHLY_REQUEST_LIMIT: '700',
 };
 
 describe('loadServerEnv', () => {
-  it('accepts a fully populated, well-formed environment', () => {
+  it('accepts a fully populated, well-formed environment with defaulted operational config', () => {
     const env = loadServerEnv(validEnv);
     expect(env).toEqual({
       port: 3001,
@@ -17,6 +19,10 @@ describe('loadServerEnv', () => {
       googlePlacesServerKey: 'test-server-key',
       googlePlacesTimeoutMs: 5000,
       cafeProvider: 'live',
+      logLevel: 'info',
+      searchRateLimitMax: 10,
+      searchRateLimitWindowMs: 60_000,
+      providerMonthlyRequestLimit: 700,
     });
   });
 
@@ -28,6 +34,34 @@ describe('loadServerEnv', () => {
   it('rejects an unknown CAFE_PROVIDER value', () => {
     expect(() => loadServerEnv({ ...validEnv, CAFE_PROVIDER: 'google' })).toThrowError(
       /CAFE_PROVIDER/,
+    );
+  });
+
+  it('requires PROVIDER_MONTHLY_REQUEST_LIMIT when CAFE_PROVIDER=live', () => {
+    const { PROVIDER_MONTHLY_REQUEST_LIMIT: _omitted, ...withoutLimit } = validEnv;
+    expect(() => loadServerEnv(withoutLimit)).toThrowError(/PROVIDER_MONTHLY_REQUEST_LIMIT/);
+  });
+
+  it('does not require PROVIDER_MONTHLY_REQUEST_LIMIT in fixture mode', () => {
+    const { PROVIDER_MONTHLY_REQUEST_LIMIT: _omitted, ...withoutLimit } = validEnv;
+    const env = loadServerEnv({ ...withoutLimit, CAFE_PROVIDER: 'fixture' });
+    expect(env.providerMonthlyRequestLimit).toBeUndefined();
+  });
+
+  it('accepts 0 as a deliberate PROVIDER_MONTHLY_REQUEST_LIMIT and rejects a negative one', () => {
+    expect(
+      loadServerEnv({ ...validEnv, PROVIDER_MONTHLY_REQUEST_LIMIT: '0' })
+        .providerMonthlyRequestLimit,
+    ).toBe(0);
+    expect(() => loadServerEnv({ ...validEnv, PROVIDER_MONTHLY_REQUEST_LIMIT: '-5' })).toThrowError(
+      /PROVIDER_MONTHLY_REQUEST_LIMIT/,
+    );
+  });
+
+  it('rejects a non-integer LOG_LEVEL / rate-limit value', () => {
+    expect(() => loadServerEnv({ ...validEnv, LOG_LEVEL: 'chatty' })).toThrowError(/LOG_LEVEL/);
+    expect(() => loadServerEnv({ ...validEnv, SEARCH_RATE_LIMIT_MAX: '0' })).toThrowError(
+      /SEARCH_RATE_LIMIT_MAX/,
     );
   });
 

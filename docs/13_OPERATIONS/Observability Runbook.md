@@ -5,27 +5,34 @@ status: approved
 version: 1.0
 authority: canonical
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-08-28
 ---
 # Observability Runbook
 
 ## API structured log fields
 
-Recommended:
-- timestamp;
-- request ID;
-- route;
-- method;
-- outcome/status;
-- latency ms;
-- provider outcome category;
-- app version/environment.
+Enforced by `apps/api/src/logging.ts` (H02, [[ADR-008 Metered Provider Cost Controls]]):
 
-Avoid:
-- API keys/authorization headers;
-- full raw provider payloads;
-- precise user coordinates unless a temporary controlled diagnostic explicitly requires them;
+Emitted:
+- `reqId` (request correlation, added by Fastify);
+- `req: { method, url }` — URL path only, query string stripped;
+- `res: { statusCode }`, `responseTime`;
+- bounded application error codes (`{ providerErrorCode }`, `{ event }`);
+- log level, timestamp, pid/hostname.
+
+Never emitted (removed vs. Fastify defaults):
+- `req.remoteAddress` / `req.remotePort` — the client IP is not logged;
+- `req.hostname` and request headers;
+- the request body / `SearchCenter` / precise coordinates;
+- API keys / `X-Goog-Api-Key` / `Authorization` / `Cookie`;
+- raw provider response payloads;
+- error own-properties other than `type` / `message` / `stack` (a thrown error
+  cannot carry an attached `.response` / `.body` into a log line);
 - browser localStorage contents.
+
+Regression tests (`apps/api/src/test/logging.test.ts`) capture emitted lines and
+assert conspicuous coordinates, a fake key sentinel and an attached-payload
+sentinel never appear while method/path/status remain present.
 
 ## Failure triage
 

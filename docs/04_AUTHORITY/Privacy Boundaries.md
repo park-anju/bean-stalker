@@ -5,7 +5,7 @@ status: approved
 version: 1.0
 authority: canonical
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-08-28
 ---
 # Privacy Boundaries
 
@@ -22,6 +22,24 @@ Precise current-location coordinates can reveal where a person is. P0 treats the
 - avoid logging raw precise coordinates;
 - favour coarse/hashed/redacted diagnostics if location context is needed for debugging;
 - favourites may contain cafe coordinates because they describe public place locations, not the user's location.
+
+## Application logging (H02)
+
+Bean Stalker's Fastify logging is configured to conform to this policy:
+
+- precise search coordinates and the cafe-search request body are never logged
+  (the request serializer emits only method + path; bodies are not serialized;
+  a `redact` list removes coordinate-shaped fields from any manual log call);
+- the client IP is **not** logged or persisted — it is used only as an
+  ephemeral in-memory key for the per-client rate limiter, then discarded when
+  its window expires;
+- provider/API credentials and raw provider response payloads are never logged;
+  a thrown error's attached properties are stripped before serialization;
+- retained for observability: request id, method, path, status, latency, and
+  bounded application error codes.
+
+This does not change the fact that the **live** Google Places provider
+necessarily receives the search centre to perform Nearby Search — see below.
 
 ## Browser storage
 

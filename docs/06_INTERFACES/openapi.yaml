@@ -39,10 +39,23 @@ paths:
                 $ref: '#/components/schemas/CafeSearchResponse'
         '400':
           $ref: '#/components/responses/ErrorResponse'
+        '429':
+          description: Per-client rate limit exceeded (code RATE_LIMITED). Includes a Retry-After header.
+          headers:
+            Retry-After:
+              schema: { type: integer }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
         '502':
           $ref: '#/components/responses/ErrorResponse'
         '503':
-          $ref: '#/components/responses/ErrorResponse'
+          description: Provider failure, or the global metered-provider allowance is exhausted (code PROVIDER_CAPACITY_EXHAUSTED).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
 components:
   responses:
     ErrorResponse:
