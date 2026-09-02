@@ -2,16 +2,24 @@
 id: ARCH-SDD
 type: architecture-spec
 status: approved
-version: 1.0
+version: 1.1
 authority: canonical
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-09-03
 ---
 # Software Design Description
 
 ## 1. Scope
 
-Defines implementation design for [[MVP Scope]] and [[SRS]].
+Defines implementation **design intent** for [[MVP Scope]] and [[SRS]].
+
+> **As-built reference.** For the verified current architecture — system
+> context, container/runtime layout, the cafe-search sequence, state
+> ownership, the location data lifecycle, the cost/abuse guardrail stack, the
+> provider abstraction, and the explicit non-goals — see [[System Architecture]]
+> (v2.0, H09). This SDD records the design *as planned*; where the two differ,
+> [[System Architecture]] §"As-built corrections" is authoritative and this note
+> is updated to match.
 
 ## 2. Repository layout
 
@@ -41,11 +49,17 @@ Bean Stalker/
 - `/` — discovery/search experience;
 - `/favorites` — locally saved cafes (may reuse discovery shell).
 
-### State split
-- **server state:** cafe search response → TanStack Query;
-- **URL/route state:** route and optional share-safe search controls;
-- **UI state:** selected cafe, filters, drawer/panel state;
-- **persistent local state:** favourites only.
+### State split (as built — see [[System Architecture]] §D)
+- **server-derived state:** cafe search response → TanStack Query cache
+  (browser-only; the server keeps no copy);
+- **route state:** the current path only (`/`, `/favorites`, 404). No search
+  parameters are held in the URL — shareable searches are a post-MVP idea
+  ([[Productionization Program]] `PRD-07`);
+- **transient UI state:** selected cafe id, local filters/sort, location
+  resolution state, manual-input fields (React state, never persisted);
+- **persistent local state:** favourites only (`localStorage`);
+- **server operational state:** in-memory rate-limit windows + monthly
+  provider-usage count — abuse/cost control, **not** user or session data.
 
 ## 4. API design
 

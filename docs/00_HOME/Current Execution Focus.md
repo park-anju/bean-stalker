@@ -11,12 +11,11 @@ updated: 2026-09-03
 
 ## Active objective
 
-Hardening milestone **H08** (mobile & accessibility QA) is DONE, on top of H02–H07. A corrective-polish pass on the existing fixture-backed app — no new features, no backend change: darkened `--color-accent` to clear WCAG 2.1 AA contrast for link/button text; enlarged the "Open now only" checkbox to the WCAG 2.2 24 px target-size minimum; split location errors into an assertive `role="alert"` with `aria-invalid`/`aria-describedby` field association; added an API-empty `role="status"`; added `@axe-core/playwright` (dev-only) with a zero-violation scan of 9 states, plus a 320 px / long-content / geolocation-denied / keyboard-only Playwright suite. `OQ-013` reviewed, left open. **0 real Google requests.** No task is IN_PROGRESS.
+Hardening milestone **H09** (architecture documentation) is DONE, on top of H02–H08. Documentation-only — **0 code changes**. [[System Architecture]] was rewritten as the authoritative **as-built** reference (v2.0): seven verified Mermaid views (system context, container/runtime, cafe-search sequence + failure table, state ownership, location data lifecycle, cost/abuse guardrails, provider abstraction), plus shared-package boundaries, query/cache rules, selection sync, favourite/error/security/test architecture, an explicit non-goals section, a labelled future/blocked section, and an as-built corrections table. [[SDD]] → v1.1 points to it. The H08 closure addendum (manual landscape verification 667 × 375 / 844 × 390 PASS) is recorded. **0 real Google requests.** No task is IN_PROGRESS.
 
 ## Next READY tasks
 
-- **`H09` — Architecture documentation.** Dependency `H08` `DONE`. Needs no Google credentials. This is the next actionable task.
-- `H10` (portfolio README) is `PENDING` behind H09.
+- **`H10` — Portfolio README preparation.** Dependency `H09` `DONE`. Needs no Google credentials. This is the next actionable task.
 - `T08` — restricted-credential live provider smoke — still BLOCKED on [[Known Blockers|BLK-001]] / [[Known Blockers|BLK-003]]. `T11`–`T15` are gated on it.
 - Before **public release** (not T08): a durable/shared production usage guard ([[Known Blockers|BLK-004]]), `trustProxy`/HSTS for the chosen topology, Google-side quotas/budget/key restrictions.
 - Deferred, non-critical: [[Open Questions|OQ-012]] (favourites-only filter), [[Open Questions|OQ-013]] (immediate Retry on capacity exhaustion).

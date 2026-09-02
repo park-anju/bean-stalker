@@ -5,7 +5,7 @@ status: approved
 version: 1.0
 authority: navigation
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-09-03
 ---
 # Bean Stalker Brain
 
@@ -53,8 +53,8 @@ updated: 2026-08-27
 
 ## Architecture and interfaces
 
-- [[System Architecture]]
-- [[SDD]]
+- [[System Architecture]] — **authoritative as-built architecture** (v2.0): system context, container/runtime, cafe-search sequence, state ownership, location lifecycle, cost/abuse guardrails, provider abstraction, non-goals, future/blocked
+- [[SDD]] — design intent (defers to System Architecture for as-built)
 - [[Data Model]]
 - [[Decision Index]]
 - [[API Contract]]
