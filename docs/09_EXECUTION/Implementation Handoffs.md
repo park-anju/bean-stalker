@@ -551,3 +551,73 @@ Append verified evidence between implementation tasks/sessions. Do not replace h
 - **Security / privacy / cost review:** `FavoriteStore` contains only `{ version, cafes: [{ placeId, savedAt, snapshot: Cafe }] }` — no `SearchCenter`/user coordinates ([[Privacy Boundaries]]: favourites may hold *public place* coordinates), no request IDs, no provider payloads/errors, no credentials. No analytics/server logs/account identifiers for favourite data. Server Places key still absent from `apps/web/dist` (re-checked). No `.env`/secret committed (`apps/web/.env.local`, `apps/api/.env` gitignored, untouched).
 - **New open question recorded:** [[Open Questions|OQ-012]] — a "favourites only" toggle on the Discovery `FilterBar` ([[Ranking and Filtering Rules]] lists `favourite` as a filter; FR-014 says "view/filter"). T10 delivered the *view* (`/favorites`) and the membership state but not a Discovery filter control — flagged rather than silently dropped, to decide at T12 or a follow-up.
 - **Next safe task:** **none is READY.** T09 and T10 completed the [[MVP Scope]] P0 feature set. `T11`–`T15` are all gated on `T08`, which is BLOCKED on [[Known Blockers|BLK-001]] / [[Known Blockers|BLK-003]] (developer must configure a Google Cloud project + restricted credentials + quotas + budget alert). Per the session's explicit instruction, stopping here — not starting T08 or release/deploy/PWA work.
+
+---
+
+### `H02–H05` — Pre-T08 hardening milestone
+
+- **Date:** 2026-08-28
+- **Executor:** Claude Code
+- **Starting commit:** `3a4d498` (Record T10 implementation handoff evidence)
+- **Ending commit:** `6b3344f` (Implement H02-H05: pre-T08 privacy/cost hardening)
+- **Nature:** a controlled hardening milestone run while T08 is blocked. **Does NOT unblock T08.** No Google Cloud APIs enabled, no real credentials, **0 real Google Maps Platform / Places requests.** [[ADR-008 Metered Provider Cost Controls]] records the decision; [[Pre-T08 Project Checkpoint]] is the canonical source for the RM0/RM5/RM10 policy and privacy principles.
+- **Baseline finding (recorded, then fixed):** `node scripts/validate-brain.mjs` was **FAILING** on `docs/09_EXECUTION/Pre-T08 Project Checkpoint.md` (governed doc missing YAML frontmatter — the validator walks the filesystem, not git). Added frontmatter (`id: EXEC-PRE-T08-CHECKPOINT`) and formalized it into the brain; validation now passes (76 governed notes).
+
+- **H02 — privacy-safe logging.**
+  - **Audit findings:** Fastify's default `logger: true` request serializer emits `remoteAddress`/`remotePort` (the client IP) on every request — a violation of the "no client IP in application logs" policy ([[Privacy Boundaries]], [[Observability Runbook]], Checkpoint §6). Request *bodies* were **not** logged (Fastify does not serialize them). The cafe-search route already logs only `{ providerErrorCode }`; `GooglePlacesProvider` already never puts response bodies or the key in error messages. Residual risk: an *unexpected* error reaching `setErrorHandler` is logged via pino's default `err` serializer, which serializes **own-enumerable properties** — so a future error carrying an attached `.response` / `.body` could leak a raw payload.
+  - **Implemented:** `apps/api/src/logging.ts` → `buildLoggerOptions(level)` (`PrivacySafeLoggerOptions`):
+    - custom `req` serializer → `{ method, url }` only, query string stripped (`url.split('?')[0]`); no `remoteAddress`/`remotePort`/`hostname`/headers;
+    - custom `res` serializer → `{ statusCode }`;
+    - custom `err` serializer → whitelist `{ type, message, stack }`, **drop every other own-property**;
+    - `redact` list (`remove: true`) for `req.headers.authorization|cookie|x-goog-api-key|x-goog-fieldmask`, `req.body`, `body`, `center`, `searchCenter`, `latitude`, `longitude`, `apiKey`, `googlePlacesServerKey` — defence in depth for manual `request.log.*` calls.
+  - `buildApp` gained a `logger?` option (default `buildLoggerOptions()`); `main.ts` passes `buildLoggerOptions(env.logLevel)`; `LOG_LEVEL` added to validated env (default `info`).
+  - Retained observability: `reqId`, method, path, status, `responseTime`, bounded error codes.
+  - **Tests:** `apps/api/src/test/logging.test.ts` (4) — capturing log stream + fake provider: (1) a search with `latitude 1.234567 / longitude 110.987654` and `remoteAddress 203.0.113.42` emits none of those literals, no `remoteAddress` key, no request body, but keeps method/path/status; (2) a `ProviderError` logs only `PROVIDER_BAD_RESPONSE`; (3) an error with attached `rawProviderResponse` / `apiKey` sentinels logs neither, still 500 to the client, sentinel absent from the response; (4) a manual `app.log.info({ apiKey: 'THIS_MUST_NEVER_APPEAR_IN_LOGS', body: {...} })` is redacted.
+
+- **H03 — per-client rate limiting.**
+  - **Decision:** hand-rolled `FixedWindowRateLimiter` (`apps/api/src/rateLimiter.ts`), not `@fastify/rate-limit`. `@fastify/rate-limit@11.2.0` was checked and is Fastify-5 compatible (`fastify-plugin ^6`), but hand-rolling keeps the 429 body identical to the shared error envelope, makes the clock injectable for deterministic tests, and adds no runtime dependency for one route (consistent with T06's hand-rolled loader). Recorded in ADR-008.
+  - **Config:** `SEARCH_RATE_LIMIT_MAX` (default 10), `SEARCH_RATE_LIMIT_WINDOW_MS` (default 60000), validated env. Provisional `10 committed searches / minute / client` — an operational assumption, documented as revisable.
+  - **Behaviour:** `tryConsume(key)` atomically checks + increments (synchronous, single-tick — concurrency-safe). Applied in the cafe-search route handler **after** schema validation, **before** the usage guard. Exceed → **HTTP 429**, `Retry-After` header (seconds until window reset, ≥ 1), canonical envelope with code **`RATE_LIMITED`**. Provider not called; usage guard not consumed. `/health` is never rate-limited.
+  - **Client identity:** `request.ip` used only as an in-memory Map key; never logged (H02), never persisted. `trustProxy` caveat documented ([[Environment Contract]], ADR-008, [[Known Blockers|BLK-003]]).
+  - **Tests:** `rateLimiter.test.ts` (7) — window admit/deny, per-key independence, window reset, shrinking Retry-After, config validation, `Promise.all` concurrency (exactly `max` admitted). Route-level in `test/cafeSearchGuards.test.ts`.
+
+- **H04 — global metered-provider usage guard.**
+  - `apps/api/src/providerUsageGuard.ts`: `ProviderUsageGuard` interface (`tryConsume(): Promise<UsageDecision>`, `getStatus(): Promise<UsageStatus>`), `InMemoryProviderUsageGuard` (UTC `YYYY-MM` period via `utcMonthKey`, injectable clock), `UnlimitedProviderUsageGuard` (fixture mode).
+  - **Atomicity:** `tryConsume` runs check + `used += 1` with no `await` between them, so `used` can never exceed `limit` even under `Promise.all`. Interface returns a `Promise` so a durable/shared implementation can substitute — which **must** perform this as one atomic store operation (documented in the file + ADR-008).
+  - **Accounting:** one unit consumed *immediately before* dispatch; **not refunded** on provider error/timeout/malformed response (a dispatched attempt is assumed billable). Validation / rate-limit rejections consume nothing; a guard rejection means the provider is never called. Rejection → **HTTP 503**, code **`PROVIDER_CAPACITY_EXHAUSTED`**.
+  - **Config:** `PROVIDER_MONTHLY_REQUEST_LIMIT` (`z.coerce.number().int().min(0).optional()`), **required when `CAFE_PROVIDER=live`** (`superRefine`); `0` is a deliberate fully-fail-closed value; negative/non-integer rejected. Ignored in fixture mode. Provisional operational zone `600–750/month`, documented as an internal policy, not Google's pricing.
+  - `main.ts`: live → `InMemoryProviderUsageGuard(env.providerMonthlyRequestLimit)`; fixture → `UnlimitedProviderUsageGuard`. `buildApp` gained `usageGuard?` (default `UnlimitedProviderUsageGuard`) so the 40 pre-existing route tests are unaffected.
+  - **NOT production-final:** in-memory, resets on restart, not shared across instances → [[Known Blockers|BLK-004]]; public release requires a durable/shared implementation or an equivalent infra hard guard.
+  - **Tests:** `providerUsageGuard.test.ts` (11) — `utcMonthKey`, unlimited guard, `limit` attempts then deny, no-refund semantics, **UTC month rollover reset** (injected clock), negative/non-integer rejection, `limit: 0` denies all, concurrent `Promise.all` ≤ limit.
+
+- **H05 — graceful capacity exhaustion.**
+  - **Contract:** `packages/contracts` `ErrorCodeSchema` gained `RATE_LIMITED` and `PROVIDER_CAPACITY_EXHAUSTED`; `errors.test.ts` updated; [[Error Catalog]] + `openapi.yaml` (429 + a documented 503) updated. Envelope shape unchanged.
+  - **Frontend:** `apps/web/src/search/errorCopy.ts` — `RATE_LIMITED` → "You're searching too quickly. Please wait a moment, then try again."; `PROVIDER_CAPACITY_EXHAUSTED` → "Live cafe search is temporarily unavailable. Please try again later." Both `isRetryable` (explicit Retry button; `useCafeSearch` already `retry: false` so no auto-retry). `apiClient.ts` needed no change — it already parses any envelope code. `SearchStatePanel` / `useCafeSearch` / map-list isolation / favourites all unchanged and still work.
+  - **Route integration:** `test/cafeSearchGuards.test.ts` (9) — 429 vs 503 distinct; rate-limited consumes no usage; `/health` unaffected; 503 at cap with provider uncalled; failed attempt still consumes; invalid request consumes nothing; ordinary search unaffected by generous limits.
+  - **Frontend tests:** `errorCopy.test.ts` (5) — distinct bounded copy, no pricing/counter/IP/Google leak, retryable; `apiClient.test.ts` (+2) — 429/503 codes map to typed errors; `SearchStatePanel.test.tsx` (+2) — 429 shows "too quickly" + retry (no IP), 503 shows "temporarily unavailable" + retry (no counter). E2e `tests/e2e/capacity.spec.ts` (2) — 429 shows bounded message, no auto-retry (counter stays 1), location retained, retry works; 503 degrades gracefully, favourites route still reachable, no loop.
+
+- **Route pipeline (final):** `schema validation → per-client rate limit → global usage guard → provider`. `cafeSearchRoute` now takes `{ provider, usageGuard, rateLimiter }`; `app.ts` threads them + the logger through `buildApp` options.
+
+- **Regression (T07/T09/T10 guarantees re-verified):** filter/sort/favourite/`/favorites`/map-pan-zoom/selection/focus/reconnect still cause 0 provider requests; auto-retry still disabled; the existing 40 `cafeSearch.test.ts` route tests pass unchanged (default `UnlimitedProviderUsageGuard`, no rate limiter). Full frontend RM0 e2e (`search`/`filters`/`favorites`) unchanged and green.
+
+- **Commands run:**
+
+| Command | Exact result |
+|---|---|
+| `node scripts/validate-brain.mjs` | baseline **FAILED** (checkpoint doc frontmatter) → after fix **PASSED**: 22 required files, 77 governed notes (+ADR-008), 77 unique IDs, 0 unresolved wiki links |
+| `pnpm lint` | passed, 0 problems |
+| `pnpm format` | passed — `prettier --check .` clean |
+| `pnpm typecheck` | passed — all 4 packages |
+| `pnpm test` | passed — **275 tests**: contracts 24, domain 31, apps/web **150** (+9: errorCopy 5, apiClient +2, SearchStatePanel +2), apps/api **70** (+30: env +6, logging 4, rateLimiter 7, providerUsageGuard 11, cafeSearchGuards 9, minus overlap) |
+| `pnpm build` | passed — 4 packages |
+| `pnpm e2e` | passed — **25/25** chromium (app-shell 5, location 5, search 6, filters 3, favorites 4, capacity 2) |
+| `pnpm dev` (`CAFE_PROVIDER=fixture`, cold) | clean start; `predev` built shared packages; vite `:5173`; api `Server listening at http://127.0.0.1:3001` |
+| `curl http://localhost:3001/health` | `{"status":"ok"}` — still 200 after the search route was rate-limited |
+| `curl` × 12 rapid `POST /api/v1/cafes/search` (fixture) | `200 200 200 200 200 200 200 200 200 200 429 429` — limiter trips exactly at the 11th |
+| `curl -D -` on the 11th (body coords `9.999999 / 8.888888`) | `HTTP/1.1 429`, `retry-after: 51`, body `{"error":{"code":"RATE_LIMITED","message":"You are sending search requests too quickly...","requestId":"req-e"}}` |
+| `grep` dev log for `9\.999999\|8\.888888\|remoteAddress\|IP` | **0 matches**; log lines show `req:{method,url}` only |
+| `grep -rn "GOOGLE_PLACES_SERVER_KEY\|places.googleapis\|X-Goog-Api-Key" apps/web/dist/` | no matches |
+
+- **Provider-call proof:** Real Google Places requests made: **0**. Real Google Maps billing required: **NO**. All verification used fixtures, mocked providers, injected fake providers, and Playwright route interception; the e2e Google Maps script is `route.abort()`ed.
+- **Remaining blockers (preserved):** [[Known Blockers|BLK-001]] Google Cloud Billing/credentials; [[Known Blockers|BLK-003]] Google-side quotas/budget/key restrictions + `trustProxy`; **[[Known Blockers|BLK-004]] (new)** durable/shared production usage guard; T08 live provider smoke; deployment-specific proxy/client identity. `OQ-010`/`OQ-011`/`OQ-012` unchanged.
+- **Next safe task:** **none is READY.** T08 stays BLOCKED. Per the session's explicit instruction, stopping here — not starting T08, release, deployment or PWA work.
