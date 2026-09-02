@@ -707,7 +707,7 @@ Append verified evidence between implementation tasks/sessions. Do not replace h
 
 - **Baseline (before edits).** Branch `master`, commit `37d91a7`. `pnpm test` **288** (contracts 28, domain 31, web 151, api 78); `pnpm e2e` **25** (1 flaky on first run — `favorites.spec.ts` reload test — 25/25 on re-run; not H08-caused); brain **78 governed notes**. `pnpm lint` / `format` / `typecheck` / `build` (+ frontend secret gate) clean.
 
-- **Audit method.** A Playwright script drove the real fixture-backed app at 320 / 360 / 375 / 390 / 430 / 768 px across 6 states (initial, results, filtered-empty, empty, error, favourites, 404), measuring `documentElement.scrollWidth − clientWidth`, per-element target-size, tab order, computed contrast, and a 200%-zoom pass. `@axe-core/playwright` scanned 9 representative states. All findings below were confirmed by both the script and axe where axe covers the rule.
+- **Audit method — automated browser verification.** A Playwright script drove the real fixture-backed app at 320 / 360 / 375 / 390 / 430 / 768 px across 6 states (initial, results, filtered-empty, empty, error, favourites, 404), measuring `documentElement.scrollWidth − clientWidth`, per-element target-size, tab order, computed contrast, and a 200%-zoom pass. `@axe-core/playwright` scanned 9 representative states. All findings below were confirmed by both the script and axe where axe covers the rule. **Terminology:** the viewport matrix below is *automated* browser verification (headless Chromium via Playwright), not hand testing on physical devices; the one genuinely hand-performed check is the **Manual landscape verification** recorded in the closure addendum.
 
 - **Audit findings.**
   - **CRITICAL:** none.
@@ -764,5 +764,27 @@ Append verified evidence between implementation tasks/sessions. Do not replace h
 - **Remaining blockers (unchanged):** [[Known Blockers|BLK-001]] Google credentials; [[Known Blockers|BLK-003]] Google-side quotas/budget/key restrictions + `trustProxy` + HSTS; [[Known Blockers|BLK-004]] durable/shared usage guard; T08 live provider smoke. `OQ-010` / `OQ-011` / `OQ-012` unchanged. `OQ-013` reviewed, **left open** (resolution deferred to T11 / a dedicated pass).
 
 - **Accessibility claim wording (for H10 / README):** *"Designed and tested against relevant WCAG 2.2 principles with automated (`axe-core`) and manual keyboard / mobile checks."* **Not** "WCAG 2.2 AA certified" / "fully accessible" / "screen-reader certified" — no formal audit occurred.
+
+#### H08 closure addendum (2026-09-03)
+
+- **Manual landscape verification.** The project owner hand-inspected Bean Stalker in two short-height landscape viewports:
+  - **667 × 375 — PASS**
+  - **844 × 390 — PASS**
+
+  Observed in both:
+  - no clipped controls;
+  - no inaccessible content;
+  - normal page scrolling (no unexpected horizontal page overflow);
+  - map / list layout remained usable;
+  - navigation remained usable;
+  - filters remained usable;
+  - favourites remained usable;
+  - existing error states remained usable.
+
+  This is the only physically-hand-performed check in H08. Nothing beyond the list above is claimed from it (no assistive-technology testing, no additional viewports, no device-specific behaviour).
+
+- **Terminology correction.** The 320–768 px viewport matrix in this entry is **automated browser verification** (headless Chromium via Playwright + `@axe-core/playwright`), and is labelled as such above. It is not hand testing. The genuinely manual evidence is the landscape check immediately above. The Brain contained no "Manual QA Matrix" wording to rename; this note makes the automated-vs-manual split explicit.
+
+- **H08 closure state:** `H08` **DONE** (automated + axe + manual landscape evidence all recorded). `H09` **READY**.
 
 - **Next safe task:** **H09 — Architecture documentation** is now the single next `READY` task (deps H08 satisfied). T08 stays **BLOCKED**. Stopping here per instruction — not starting H09, T08, release or deployment.

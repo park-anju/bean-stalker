@@ -43,7 +43,7 @@ updated: 2026-09-03
 - [ ] `pnpm build` (includes `scripts/check-frontend-dist-secrets.mjs`)
 - [ ] `pnpm e2e`
 - [ ] `node scripts/validate-brain.mjs`
-- [x] responsive smoke test — H08: no page-level horizontal scroll at 320–768 px / 200% zoom in any state; `tests/e2e/mobile.spec.ts` + `accessibility.spec.ts` regression-guard 320 px.
+- [x] responsive smoke test — H08: no page-level horizontal scroll at 320–768 px / 200% zoom in any state (automated, `tests/e2e/mobile.spec.ts` + `accessibility.spec.ts`); manual landscape verification 667 × 375 and 844 × 390 both PASS (hand-performed 2026-09-03).
 - [x] keyboard/accessibility smoke test — H08: keyboard-only core flow, visible focus, assertive location-error alerts, WCAG AA contrast, WCAG 2.2 checkbox target size; `@axe-core/playwright` zero-violation scan of 9 states. Formal audit still out of scope.
 
 ### Documentation

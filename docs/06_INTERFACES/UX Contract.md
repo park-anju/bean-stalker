@@ -51,10 +51,14 @@ Explain that search failed without pretending there are zero cafes. Offer retry/
 
 ### H08 baseline (tested 2026-09-03, [[Implementation Handoffs]] `H08`)
 
-- **Target viewports:** 320 / 360 / 375 / 390 / 430 / 768 px plus a
-  short-height landscape check. No unintended page-level horizontal scroll
-  at 320 px in any state (asserted in `tests/e2e/mobile.spec.ts` and
-  `accessibility.spec.ts`).
+- **Target viewports:** 320 / 360 / 375 / 390 / 430 / 768 px — *automated*
+  browser verification (Playwright headless Chromium). No unintended
+  page-level horizontal scroll at 320 px in any state (asserted in
+  `tests/e2e/mobile.spec.ts` and `accessibility.spec.ts`).
+- **Manual landscape verification (hand-performed, 2026-09-03):** 667 × 375
+  and 844 × 390 both PASS — no clipped controls, no inaccessible content,
+  normal page scrolling, map/list + nav + filters + favourites + error
+  states all usable.
 - **Contrast:** interactive/link text meets WCAG 2.1 AA (`--color-accent`
   is `#a85a17`, ≥4.5:1 on both `--color-bg` and `--color-surface`). Verified
   by `axe-core` across 9 representative states.

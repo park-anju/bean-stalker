@@ -26,7 +26,7 @@ Primary flows are keyboard operable; controls have accessible names; selected/fa
 ## NFR-005 — responsive design
 Core flows remain usable at common mobile and desktop widths.
 
-**H08 baseline:** no unintended page-level horizontal scroll at 320–768 px (and at 200% zoom) in any state — initial, results, filtered-empty, empty, error, favourites, 404 — including long / non-ASCII / missing-data cafe content. Regression-guarded in `tests/e2e/mobile.spec.ts` and `tests/e2e/accessibility.spec.ts`.
+**H08 baseline:** no unintended page-level horizontal scroll at 320–768 px (and at 200% zoom) in any state — initial, results, filtered-empty, empty, error, favourites, 404 — including long / non-ASCII / missing-data cafe content. Automated (Playwright) regression-guarded in `tests/e2e/mobile.spec.ts` and `tests/e2e/accessibility.spec.ts`; **manual landscape verification** (hand-performed 2026-09-03): 667 × 375 and 844 × 390 both PASS.
 
 ## NFR-006 — reliability
 API/provider failure does not crash the application or silently present stale/empty data as a fresh success.
