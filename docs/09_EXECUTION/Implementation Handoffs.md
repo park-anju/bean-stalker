@@ -788,3 +788,67 @@ Append verified evidence between implementation tasks/sessions. Do not replace h
 - **H08 closure state:** `H08` **DONE** (automated + axe + manual landscape evidence all recorded). `H09` **READY**.
 
 - **Next safe task:** **H09 — Architecture documentation** is now the single next `READY` task (deps H08 satisfied). T08 stays **BLOCKED**. Stopping here per instruction — not starting H09, T08, release or deployment.
+
+---
+
+### `H09` — Architecture documentation
+
+- **Date:** 2026-09-03
+- **Executor:** Claude Code
+- **Starting commit:** `8d9768e` (Record H08 closure addendum: manual landscape verification)
+- **Ending commit:** `c273c2c` (Complete H09: as-built architecture documentation)
+- **Nature:** **documentation-only** — **0 product code changes**, no config changes, no dependency changes (net). Purpose: make Bean Stalker's as-built architecture explainable without reverse-engineering the repo.
+
+- **Approach — expand, don't duplicate.** The Brain already had `docs/05_ARCHITECTURE/System Architecture.md` (v1.0, a P0 sketch) and `SDD.md`. Rather than adding ~7 new architecture notes, **`System Architecture.md` was rewritten as v2.0** — the single authoritative as-built reference containing all seven required views plus supporting sections. `SDD.md` → v1.1 (points to it for as-built; its stale state-split section corrected). `Data Model.md` was already accurate — unchanged.
+
+- **Verification method.** Every diagram/claim was checked against repository code before writing: `apps/api/src/{app,main,security,logging,env}.ts`, `routes/{health,cafeSearch}.ts`, `rateLimiter.ts`, `providerUsageGuard.ts`, `providers/**`; `apps/web/src/{search,location,favorites,cafes,map}/**`, `routes/DiscoveryPage.tsx`, `main.tsx`, `query-client.ts`, `styles/app.css`; `packages/contracts/src/*.ts`, `packages/domain/src/*.ts`; and the accepted ADRs (002/004/005/006/007/008/009), [[Environment Contract]], [[Threat Model]], [[Error Catalog]], [[Privacy Boundaries]], [[API Cost Guardrail Runbook]].
+
+- **Artifacts produced (all in [[System Architecture]] v2.0).**
+
+| View | Section | Represents | Key boundaries | Code evidence |
+|---|---|---|---|---|
+| **A. System Context** | §2 | Bean Stalker vs. external actors/systems | Maps JS = browser-side (browser key); Places (New) = server-side (server key); favourites = local; **no** user DB / auth / history service | `main.tsx`, `apiClient.ts`, `CafeMap.tsx`, `googlePlacesProvider.ts`, `favoritesStorage.ts` |
+| **B. Container / Runtime** | §3 | Browser runtime, Node/Fastify runtime, compiled shared libs | shared packages are compiled `workspace:*` libs, **not** deployed services | `apps/*/src` tree, `package.json` workspaces, `app.ts` `buildApp` |
+| **C. Cafe Search Sequence** | §5 | One successful committed search, end to end + a failure-branch table | request only on query-key change; `validate → rate limit → usage guard → provider`; double Zod (outbound+inbound, both sides) | `useCafeSearch.ts`, `searchRequest.ts`, `apiClient.ts`, `cafeSearch.ts` |
+| **D. State Ownership** | §6 | Four state categories: server-derived / transient UI / persistent local / server operational | "stateless w.r.t. **users**, not because there's no DB"; operational counters ≠ user data; **no server-side user DB** | `useCafeSearch.ts`, `DiscoveryPage.tsx`, `FavoritesProvider.tsx`, `rateLimiter.ts`, `providerUsageGuard.ts` |
+| **E. Location Data Lifecycle** | §7 | Device-geo + manual paths → same pipeline; where location is *not* retained | user `SearchCenter` ≠ a saved cafe's coordinates; Google **necessarily** receives the coordinates in live mode (no false "never leaves device" claim) | `useLocation.ts`, `browserGeolocation.ts`, `searchRequest.ts`, `logging.ts`, [[Privacy Boundaries]] |
+| **F. Cost & Abuse Guardrails** | §8 | Full stack: T07 discipline → validation → H03 rate limit → H04 usage guard → provider; Google-side controls labelled deployment/T08 | consume-before-dispatch, no refund; in-memory guard is **not** a production hard cap (BLK-004); fail-closed live config | `cafeSearch.ts`, `rateLimiter.ts`, `providerUsageGuard.ts`, `env.ts`, ADR-008 |
+| **G. Provider Abstraction** | §9 | `CafeProvider` interface with `GooglePlacesProvider` + `FixtureCafeProvider`, both through one normalization path | honest portability limits — the fixture is a **Google** stand-in; `Cafe` mirrors Google's model; not drop-in provider-neutral | `providers/cafeProvider.ts`, `googlePlacesProvider.ts`, `fixtureCafeProvider.ts`, `googlePlacesMapper.ts` |
+
+  Supporting sections: shared contract boundary (§10), shared domain boundary (§11), TanStack Query key/cache rules (§12), selection sync + the accessible-list-is-primary invariant (§13), favourite architecture (§14), error-architecture table (§15), security summary (§16), testing architecture + fixture/mock/`FixtureCafeProvider` distinction (§17), **Non-goals** (§18), **Future / blocked architecture** (§19), **As-built corrections** (§20), Traceability (§21), Revision history (§22).
+
+- **Architecture findings (stale docs → corrected).**
+
+| v1.0 `System Architecture.md` said | Code actually does | Fix |
+|---|---|---|
+| Frontend modules include a `filters` module and a `shell` module | No `apps/web/src/filters/` or `shell/` directory — filter/sort logic is `cafes/filterState.ts` + `FilterBar.tsx` (delegating to `packages/domain`); the shell is `components/AppShell.tsx` + `Header.tsx` | §3 module table rewritten to the real directory tree; recorded in §20 |
+| Backend module `observability` | Implemented as `logging.ts` (`buildLoggerOptions`) | §3 names the real file |
+| Backend module `errors` | `app.ts` `setErrorHandler` + `security.ts` `setNotFoundHandler` + `providers/providerError.ts` + per-route mapping | §3 / §15 describe the real mechanism |
+| Context diagram treats `packages/contracts` as an API dependency node | It's a compiled library imported into both runtimes, no network surface | §2 shows only external systems; §3 shows shared libs as compiled/non-deployed |
+| `SDD.md` §3 "State split" lists "URL/route state: optional share-safe search controls" | No search parameters are held in the URL (OQ-011: no radius/rank control; shareable searches are `PRD-07`) | `SDD.md` state-split section corrected + a pointer to [[System Architecture]] §D added |
+
+  No **code** discrepancy was found — the implementation matches the ADRs and the Error Catalog. These are documentation-vs-documentation corrections; [[Source of Truth Map]] rank 8 makes `System Architecture` authoritative for the correction.
+
+- **Diagram validation.** All 7 Mermaid blocks in `System Architecture.md` v2.0 were parse-checked with `mermaid.parse()` (mermaid v11, run once locally via a jsdom harness) — **all 7 pass**. `mermaid` was **not** kept as a dependency (`pnpm add` then `pnpm remove`; `package.json` / `pnpm-lock.yaml` unchanged) — the repo has no mermaid tooling and Obsidian/GitHub render `mermaid` fences natively. Diagrams also eyeballed for readable node names, consistent flow direction, quoted labels, and no color-only meaning.
+
+- **Commands run.**
+
+| Command | Result |
+|---|---|
+| `node scripts/validate-brain.mjs` | **PASSED** — 22 required files, 78 governed notes, 78 unique IDs, **0 unresolved wiki links** |
+| `pnpm lint` | passed — `eslint .`, exit 0 |
+| `pnpm format` | passed — `prettier --check .` clean |
+| `pnpm typecheck` | passed — all 4 packages |
+| `pnpm test` | passed — **291 tests** (contracts 28, domain 31, web 154, api 78) — unchanged from H08 (no code touched) |
+| `pnpm build` | passed — `frontend-secret-check PASSED`; `axe` still absent from the bundle |
+| `pnpm e2e` | passed — **39/39** chromium |
+| `mermaid.parse()` × 7 diagrams | all pass (one-off local check; `mermaid` not retained) |
+| `git status` / `git diff --stat` | only `docs/**` changed; no code, no `package.json`, no lockfile |
+
+- **Regression evidence.** H09 changed **no** source, config, contract or dependency. `pnpm test` (291) and `pnpm e2e` (39) are byte-for-byte the H08 numbers. The provider-call invariants, H02–H08 semantics and RM0 guarantees are untouched — nothing to regress.
+
+- **Provider proof:** Real Google Places requests made: **0**. Real Google credentials used: **0**. Google Cloud Billing required: **NO**. (H09 involved no runtime execution against Google at all — it is documentation.)
+
+- **Remaining blockers (unchanged):** [[Known Blockers|BLK-001]] Google credentials; [[Known Blockers|BLK-002]] deployment target; [[Known Blockers|BLK-003]] Google-side quotas/budget/key restrictions + `trustProxy` + HSTS; [[Known Blockers|BLK-004]] durable/shared usage guard; `T08` live provider smoke. `OQ-010` / `OQ-011` / `OQ-012` / `OQ-013` unchanged (H09 documented them as open, resolved none). Deployment topology remains **unresolved** and is now explicitly documented as such ([[System Architecture]] §4).
+
+- **Next safe task:** **H10 — Portfolio README preparation** is now the single next `READY` task (deps H09 satisfied). T08 stays **BLOCKED**. Stopping here per instruction — not starting H10, T08, release or deployment.
