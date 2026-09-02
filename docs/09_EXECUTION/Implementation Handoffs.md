@@ -694,3 +694,75 @@ Append verified evidence between implementation tasks/sessions. Do not replace h
 - **Provider-call proof:** Real Google Places requests made: **0**. Real Google credentials used: **0**. Google Cloud Billing required: **NO**. All verification used fixtures, mocked/injected providers, and Playwright route interception; the e2e Google Maps script is `route.abort()`ed.
 - **Remaining blockers (preserved):** [[Known Blockers|BLK-001]] Google Cloud Billing / credentials; [[Known Blockers|BLK-003]] Google-side quotas / budget / key restrictions + `trustProxy` + HSTS for the chosen deployment topology; [[Known Blockers|BLK-004]] durable / shared production usage guard (application-layer work does **not** solve it); T08 live provider smoke. `OQ-010` / `OQ-011` / `OQ-012` unchanged (no genuine evidence to resolve them); `OQ-013` (immediate-Retry behaviour on `PROVIDER_CAPACITY_EXHAUSTED`) newly recorded.
 - **Next safe task:** **H08 — Mobile & Accessibility QA** is now the single next `READY` task (deps H07 satisfied). T08 stays **BLOCKED**. Per the session's explicit instruction, stopping here — not starting H08, T08, release, deployment or PWA work.
+
+---
+
+### `H08` — Mobile & accessibility QA
+
+- **Date:** 2026-09-03
+- **Executor:** Claude Code
+- **Starting commit:** `37d91a7` (Record H06-H07 hardening milestone handoff evidence)
+- **Ending commit:** `ca948d4` (Implement H08: mobile & accessibility QA fixes)
+- **Nature:** a **corrective-polish milestone** on the existing fixture-backed app — no new product features, no backend behaviour change, no Google traffic. Fixes genuine mobile/accessibility defects only. [[UX Contract]] v1.1 §"H08 baseline" and [[Non-Functional Requirements]] v1.1 (NFR-004/005) record the resulting baseline.
+
+- **Baseline (before edits).** Branch `master`, commit `37d91a7`. `pnpm test` **288** (contracts 28, domain 31, web 151, api 78); `pnpm e2e` **25** (1 flaky on first run — `favorites.spec.ts` reload test — 25/25 on re-run; not H08-caused); brain **78 governed notes**. `pnpm lint` / `format` / `typecheck` / `build` (+ frontend secret gate) clean.
+
+- **Audit method.** A Playwright script drove the real fixture-backed app at 320 / 360 / 375 / 390 / 430 / 768 px across 6 states (initial, results, filtered-empty, empty, error, favourites, 404), measuring `documentElement.scrollWidth − clientWidth`, per-element target-size, tab order, computed contrast, and a 200%-zoom pass. `@axe-core/playwright` scanned 9 representative states. All findings below were confirmed by both the script and axe where axe covers the rule.
+
+- **Audit findings.**
+  - **CRITICAL:** none.
+  - **MAJOR — colour contrast (WCAG 2.1 AA 1.4.3), axe `serious` ×5.** `--color-accent` `#b5651d` = **4.33:1** on `--color-surface` / **4.16:1** on `--color-bg`, below 4.5:1 for the normal-size text using it: `.favorite-button__label` ("Save"/"Saved"), `.cafe-card__maps-link`, `.filter-bar__reset`, the Favorites-empty home link, the 404 home link.
+  - **MAJOR — location error semantics (WCAG 4.1.3 / 3.3.1).** A denied-geolocation message and an invalid-coordinates message both rendered in the *polite* `role="status"` "Location status" region and were **not associated** with the latitude/longitude inputs.
+  - **MINOR — target size (WCAG 2.2 2.5.8).** The "Open now only" checkbox rendered at the native ~13 px (axe did not flag it — the spacing exception applied — but it is an awkward touch target). Standalone links "Open in Google Maps" and the 404 home link were 22 px tall.
+  - **MINOR — announcement.** The API-empty search result (`search-state--empty`) had no live-region role, unlike the loading and filtered-empty states.
+  - **NO CHANGE NEEDED:** no page-level horizontal overflow at any width (320–768 px) or at 200% zoom, in any state — the existing CSS (relative units, `flex-wrap`, `minmax(0,1fr)` grid, the `≤30rem` stacking media query) already handles it. No hover-only affordance anywhere (`grep :hover` → none). No custom CSS animation/transition — `prefers-reduced-motion` needs no remediation; card scroll-into-view uses the instant default; Google Maps' own pan animation is out of scope. Header/nav (two links), heading hierarchy (`h1` per page, `h2` on the results list), semantic landmarks, skip link, native `<select>`/`<checkbox>` filter controls, `FavoriteButton` (`aria-pressed` + text label + sibling-not-nested), and the map-failure → list-still-usable guarantee were all already correct. Tab order is logical (header → location → status → filter → list → map).
+
+- **Changes.**
+  - **`apps/web/src/styles/app.css`:**
+    - `--color-accent` `#b5651d → #a85a17` — clears 4.5:1 on both surfaces (5.07:1 / 4.87:1) while keeping the burnt-orange brand tone. Fixes all 5 axe contrast violations at the token level (every consumer uses the CSS variable).
+    - `.filter-bar__field--checkbox input` → `inline-size/block-size: 1.5rem` (24 px) + `accent-color: var(--color-accent)`; the row gets `min-height: 2.75rem`. The adjacent `<label htmlFor>` remains clickable, so the effective target is larger still.
+    - `.cafe-card__maps-link` and `.page-intro a` (the 404 home link) → `display: inline-block; padding-block: 0.35rem` — comfortable standalone tap targets without inflating inline links.
+    - `.location-status--error` → error styling (`⚠` prefix, full-strength text).
+  - **`apps/web/src/map/markerLayer.ts`:** `SELECTED_PIN.background` `#b5651d → #a85a17` to match the new token (the Google pin cannot read CSS variables).
+  - **`apps/web/src/location/LocationSelector.tsx`:** split the single status line into (a) a persistent polite `role="status"` "Location status" region for progress/success and (b) a `role="alert"` element mounted only on failure. Computes a `manualErrorId` (present only when `state.source === 'manual'`) and passes `errorMessageId` + `invalid` to `ManualLocationForm`.
+  - **`apps/web/src/location/ManualLocationForm.tsx`:** new optional `errorMessageId` / `invalid` props; when set, both coordinate `<input>`s get `aria-invalid="true"` and `aria-describedby={errorMessageId}`.
+  - **`apps/web/src/cafes/SearchStatePanel.tsx`:** `role="status"` added to the API-empty `<p>`.
+  - **No backend change.** `apps/api` is untouched.
+  - **OQ-013:** reviewed (see [[Open Questions|OQ-013]]) — current `PROVIDER_CAPACITY_EXHAUSTED` Retry behaviour is acceptable, not harmful; left **open** for T11 / a dedicated pass. H05's `isRetryable` / `SearchStatePanel` were **not** changed.
+
+- **New dependency.** `@axe-core/playwright` + `axe-core` (`^4.13.0`) as **root `devDependencies`**. Verified absent from `apps/web/dist` (`grep -l axe apps/web/dist/assets/*.js` → nothing) — dev/test only, never shipped.
+
+- **Tests.**
+  - `apps/web/src/location/ManualLocationForm.test.tsx` (NEW, 3) — every field has an associated label + parsed submit; fields unmarked when valid; both fields get `aria-invalid` + `aria-describedby` when `invalid`/`errorMessageId` set.
+  - `apps/web/src/location/LocationSelector.test.tsx` — denied + invalid cases now assert `role="alert"` and the invalid case asserts `aria-invalid`/`aria-describedby` wiring.
+  - `apps/web/src/cafes/SearchStatePanel.test.tsx` — API-empty asserts `role="status"`.
+  - `tests/e2e/mobile.spec.ts` (NEW, 5) — 320 px core flow (location → search → filter → favourite → favourites) with an overflow assertion at each step + a checkbox target-size assertion + `searchCount === 1`; long / non-ASCII / missing-data content at 320 px, no overflow; geolocation-denied → `role="alert"` → manual fallback works at 360 px; keyboard-only core flow (skip link → coords → Enter → card select → Tab to favourite → Space); every keyboard focus stop paints a ≥1 px outline.
+  - `tests/e2e/accessibility.spec.ts` (NEW, 9) — `@axe-core/playwright` (`wcag2a/2aa/21a/21aa/22aa`) on Discovery initial / results @320 / filtered-empty / empty / error, the location-error state, Favorites populated / empty, 404 — **0 violations**; `.cafe-map__surface` excluded (third-party Google DOM).
+
+- **Commands run.**
+
+| Command | Result |
+|---|---|
+| `node scripts/validate-brain.mjs` | **PASSED** — 22 required files, 78 governed notes, 78 unique IDs, 0 unresolved wiki links |
+| `pnpm lint` | passed — `eslint .`, exit 0 |
+| `pnpm format` | passed — `prettier --check .` clean |
+| `pnpm typecheck` | passed — all 4 packages |
+| `pnpm test` | passed — **291 tests**: contracts 28, domain 31, web **154** (+3 `ManualLocationForm.test.tsx`), api 78 |
+| `pnpm build` | passed — `frontend-secret-check PASSED — scanned 3 file(s) … no server-only markers`; `axe` not in the bundle |
+| `pnpm e2e` | passed — **39/39** chromium (25 prior + 5 `mobile.spec` + 9 `accessibility.spec`) |
+| `pnpm dev` (`CAFE_PROVIDER=fixture`, cold) | clean start; API `/health` → `{"status":"ok"}` with `nosniff` / `no-referrer` / `X-Frame-Options: DENY` (H07 preserved); web serves 200 |
+| axe scan, before vs after | **before:** 5 `serious` colour-contrast violations across results / filtered-empty / favourites-empty / 404. **after:** 0 violations in all 9 scanned states |
+| `grep -l axe apps/web/dist/assets/*.js` | no match — dev-only dependency |
+
+- **Regression evidence.**
+  - **Provider-call invariants:** `mobile.spec.ts` asserts the 320 px flow (manual location + one filter change + a favourite + a route change to `/favorites`) issues exactly **one** `POST /api/v1/cafes/search`; the keyboard flow asserts card selection + favouriting issue **zero** additional requests. `filters.spec.ts` / `favorites.spec.ts` / `capacity.spec.ts` unchanged and green.
+  - **H02–H07 preserved:** no `apps/api` file changed; all 78 API tests pass unchanged; cold-start `/health` still returns the minimal body with the H07 security headers. Contracts/domain tests unchanged.
+  - **T07/T09/T10:** all frontend behaviour tests pass; the 3 edited tests assert *stronger* semantics (alert vs status, field association), not weaker.
+
+- **Provider proof:** Real Google Places requests made: **0**. Real Google credentials used: **0**. Google Cloud Billing required: **NO**. Every check used fixtures, mocked providers and Playwright `route.abort()` on `maps.googleapis.com`.
+
+- **Remaining blockers (unchanged):** [[Known Blockers|BLK-001]] Google credentials; [[Known Blockers|BLK-003]] Google-side quotas/budget/key restrictions + `trustProxy` + HSTS; [[Known Blockers|BLK-004]] durable/shared usage guard; T08 live provider smoke. `OQ-010` / `OQ-011` / `OQ-012` unchanged. `OQ-013` reviewed, **left open** (resolution deferred to T11 / a dedicated pass).
+
+- **Accessibility claim wording (for H10 / README):** *"Designed and tested against relevant WCAG 2.2 principles with automated (`axe-core`) and manual keyboard / mobile checks."* **Not** "WCAG 2.2 AA certified" / "fully accessible" / "screen-reader certified" — no formal audit occurred.
+
+- **Next safe task:** **H09 — Architecture documentation** is now the single next `READY` task (deps H08 satisfied). T08 stays **BLOCKED**. Stopping here per instruction — not starting H09, T08, release or deployment.
