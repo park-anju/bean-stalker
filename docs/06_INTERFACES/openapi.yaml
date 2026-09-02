@@ -39,6 +39,18 @@ paths:
                 $ref: '#/components/schemas/CafeSearchResponse'
         '400':
           $ref: '#/components/responses/ErrorResponse'
+        '404':
+          description: Unknown route or unsupported method (code NOT_FOUND).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Request body exceeds the 16 KiB limit (code VALIDATION_ERROR). Rejected before the provider or usage guard.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
         '429':
           description: Per-client rate limit exceeded (code RATE_LIMITED). Includes a Retry-After header.
           headers:

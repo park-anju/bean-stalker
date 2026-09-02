@@ -2,10 +2,10 @@
 id: EXEC-TASK-GRAPH
 type: execution-state
 status: approved
-version: 1.0
+version: 1.1
 authority: execution
 owner: Project Owner
-updated: 2026-08-28
+updated: 2026-09-03
 ---
 # Task Graph
 
@@ -31,6 +31,20 @@ flowchart TD
   T12 --> T13
   T13 --> T14[T14 Deploy]
   T14 --> T15[T15 Demo/Resume Package]
+
+  %% Pre-T08 release-hardening chain — runs while T08 is blocked, independent
+  %% of the T11–T15 line.
+  T10 --> H02[H02 Privacy Logging]
+  H02 --> H03[H03 Rate Limiting]
+  H03 --> H04[H04 Usage Guard]
+  H04 --> H05[H05 Graceful Exhaustion]
+  H05 --> H06[H06 Secrets & Config]
+  H06 --> H07[H07 Backend Security]
+  H07 --> H08[H08 Mobile & A11y QA]
+  H08 --> H09[H09 Architecture Docs]
+  H09 --> H10[H10 Portfolio README]
 ```
 
-See [[Task Status]] for canonical execution state.
+Done: T00–T07, T09, T10, H02–H07. `H08` is the next `READY` task. `T08` is
+`BLOCKED` (credentials); `T11`–`T15` are gated on it. See [[Task Status]] for
+canonical execution state.

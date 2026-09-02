@@ -2,10 +2,10 @@
 id: HOME-KNOWN-BLOCKERS
 type: execution-state
 status: approved
-version: 1.0
+version: 1.1
 authority: execution
 owner: Project Owner
-updated: 2026-08-28
+updated: 2026-09-03
 ---
 # Known Blockers
 
@@ -32,17 +32,23 @@ happen until all of the following exist:
   ([[Known Blockers|BLK-004]]);
 - ~~graceful capacity-exhaustion behaviour~~ — **done (H05)**;
 - ~~privacy-safe application logging~~ — **done (H02)**;
+- ~~fail-closed live env config; frontend build secret gate; strict CORS;
+  security headers; bounded body/request limits~~ — **done (H06/H07,
+  [[ADR-009 API Security Posture]])**;
 - Google Cloud daily quota caps on both credentials;
 - a budget/usage alert on the Cloud project;
 - production API-key restrictions (browser key: referrer + Maps JS + Map ID;
   server key: Places API + server/IP where practical);
 - a real Cloud-configured `VITE_GOOGLE_MAPS_MAP_ID` (not `DEMO_MAP_ID`);
-- deployment-specific `trustProxy` / client-identity configuration for the
-  per-client rate limiter once the reverse-proxy topology is known.
+- deployment-specific **`trustProxy` / client-identity** configuration for the
+  per-client rate limiter once the reverse-proxy topology is known (H07 left
+  `trustProxy` at its safe default — `request.ip` is the socket address only);
+- **HSTS** and HTTPS termination for the chosen host (not set in app code).
 
-T07 delivered the **frontend** half of RM0 (request discipline); the pre-T08
-hardening milestone (H02–H05) delivered the in-process server half. This blocker
-now covers only the **Google-side and deployment-topology** configuration.
+T07 delivered the **frontend** half of RM0 (request discipline); H02–H07
+delivered the in-process server half (cost controls + logging privacy + secrets
+& API-surface hardening). This blocker now covers only the **Google-side and
+deployment-topology** configuration.
 
 **Affects:** T08, T14.
 

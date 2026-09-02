@@ -5,13 +5,14 @@ status: approved
 version: 1.0
 authority: canonical
 owner: Project Owner
-updated: 2026-08-28
+updated: 2026-09-03
 ---
 # Error Catalog
 
 | Code | HTTP | Meaning | User treatment |
 |---|---:|---|---|
-| `VALIDATION_ERROR` | 400 | Search request invalid/out of bounds | Correct input |
+| `VALIDATION_ERROR` | 400 / 413 | Request rejected before processing — invalid, out of bounds, unparseable, or over the 16 KiB body limit (H07) | Correct input |
+| `NOT_FOUND` | 404 | Unknown route, or an unsupported method on a known path (H07). No route pattern is leaked. | None (client bug) |
 | `LOCATION_PERMISSION_DENIED` | client | Browser denied current location | Offer manual location |
 | `LOCATION_UNAVAILABLE` | client | Browser could not determine location | Retry/manual location |
 | `RATE_LIMITED` | 429 | This client sent search requests too quickly (per-client limit, H03) | "You're searching too quickly" + explicit retry; `Retry-After` header; no auto-retry loop |

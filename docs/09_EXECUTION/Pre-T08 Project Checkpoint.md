@@ -5,12 +5,12 @@ status: approved
 version: 1.0
 authority: execution
 owner: Project Owner
-updated: 2026-08-28
+updated: 2026-09-03
 ---
 # Bean Stalker — Pre-T08 Project Checkpoint
 
 **Checkpoint status:** PAUSED — external billing/payment blocker
-**Current development phase:** P0 MVP feature implementation complete; pre-T08 hardening milestone (H02–H05) complete
+**Current development phase:** P0 MVP feature implementation complete; pre-T08 hardening milestones H02–H07 complete; H08 (mobile & accessibility QA) is next READY
 **Next milestone:** T08 — Restricted-Credential Live Google Provider Smoke
 
 ---
@@ -229,19 +229,28 @@ reload /favorites   → 0 searches
 
 Only a deliberate committed cafe search is intended to consume the Google Places provider.
 
-Before public release, additional controls were required. Status after the
-pre-T08 hardening milestone (H02–H05, [[ADR-008 Metered Provider Cost Controls]]):
+Before public release, additional controls were required. Status after
+hardening milestones H02–H07 ([[ADR-008 Metered Provider Cost Controls]],
+[[ADR-009 API Security Posture]]):
 
 ```text
+privacy-safe application logging        DONE (H02)
 Fastify abuse/rate limiting            DONE (H03 — per-client 429 RATE_LIMITED)
 global provider-usage protection       DONE abstraction + in-memory impl (H04);
                                        durable/shared prod impl still required (BLK-004)
 graceful capacity-exhaustion behaviour DONE (H05 — 503 PROVIDER_CAPACITY_EXHAUSTED)
-privacy-safe application logging        DONE (H02)
+secrets & configuration hardening      DONE (H06 — fail-closed live config,
+                                       origin validation, build secret gate)
+backend security hardening             DONE (H07 — strict CORS, security headers,
+                                       body/request limits, canonical NOT_FOUND)
 Google service quota configuration     PENDING — Google Cloud (T08/deploy)
 budget/usage alerts                    PENDING — Google Cloud (T08/deploy)
 restricted API credentials             PENDING — Google Cloud (T08)
+durable/shared usage guard             PENDING — deployment (BLK-004)
+trustProxy / HSTS                      PENDING — deployment (BLK-003)
 usage monitoring                       PENDING — deployment
+mobile & accessibility QA              H08 (next READY)
+architecture docs / portfolio README   H09 / H10
 ```
 
 ---
@@ -470,6 +479,9 @@ Search radius, maxResults and cache-lifetime assumptions
 
 OQ-012
 Whether Discovery eventually needs a favourites-only filter
+
+OQ-013
+Whether PROVIDER_CAPACITY_EXHAUSTED should show an immediate Retry button
 ```
 
 Do not resolve these merely because the project is paused.

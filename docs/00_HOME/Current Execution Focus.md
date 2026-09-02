@@ -2,24 +2,24 @@
 id: HOME-CURRENT-EXECUTION-FOCUS
 type: execution-state
 status: approved
-version: 1.0
+version: 1.1
 authority: execution
 owner: Project Owner
-updated: 2026-08-28
+updated: 2026-09-03
 ---
 # Current Execution Focus
 
 ## Active objective
 
-The pre-T08 hardening milestone (H02–H05, [[ADR-008 Metered Provider Cost Controls]]) is DONE: privacy-safe Fastify logging (no client IP, no coordinates, no request bodies, no raw payloads), a per-client rate limit on the search route (429 `RATE_LIMITED`), a global fail-closed metered-provider usage guard abstraction with an in-memory implementation (503 `PROVIDER_CAPACITY_EXHAUSTED`, consume-before-dispatch, no refund on failure), and graceful bounded frontend behaviour for both conditions. All verified against fixtures/mocks with **0 real Google requests**. No task is IN_PROGRESS.
+Hardening milestones **H06** (secrets & configuration) and **H07** (backend security) are DONE, on top of H02–H05. New: fail-closed live env validation (`GOOGLE_PLACES_SERVER_KEY` + `PROVIDER_MONTHLY_REQUEST_LIMIT` required only in `live`; fixture mode credential-free), a shared bare-origin validator for `WEB_ORIGIN`/`VITE_API_BASE_URL`, a bounded provider timeout, a build-time frontend-secret scan, strict single-origin CORS + `nosniff`/`no-referrer`/`X-Frame-Options: DENY` headers, a 16 KiB body limit + 20 s request timeout (both rejecting before the provider/usage guard), and a canonical `NOT_FOUND` 404. [[ADR-009 API Security Posture]] records the decisions. All verified against fixtures/mocks with **0 real Google requests**. No task is IN_PROGRESS.
 
 ## Next READY tasks
 
-**None.** T09, T10 and H02–H05 were the last unblocked work. `T11`–`T15` are all gated on `T08`.
-
-- `T08` — restricted-credential live provider smoke — BLOCKED on [[Known Blockers|BLK-001]] and [[Known Blockers|BLK-003]]. It needs the developer to create a Google Cloud project, enable only the required Maps Platform APIs, configure restricted browser + server credentials, set a budget/usage alert, and keep secrets out of source control (the prerequisites below).
-- Before **public release** (not T08): a durable/shared production usage-guard implementation ([[Known Blockers|BLK-004]]) and `trustProxy` configuration for the chosen deployment topology.
-- One minor deferred item, [[Open Questions|OQ-012]] — a "favourites only" Discovery filter — is not on the critical path.
+- **`H08` — Mobile & accessibility QA.** Dependency `H07` `DONE`. Needs no Google credentials — device/viewport and a11y verification of the existing fixture-backed app. This is the next actionable task.
+- `H09` (architecture docs) and `H10` (portfolio README) are `PENDING` behind H08.
+- `T08` — restricted-credential live provider smoke — still BLOCKED on [[Known Blockers|BLK-001]] / [[Known Blockers|BLK-003]]. `T11`–`T15` are gated on it.
+- Before **public release** (not T08): a durable/shared production usage guard ([[Known Blockers|BLK-004]]), `trustProxy`/HSTS for the chosen topology, Google-side quotas/budget/key restrictions.
+- Deferred, non-critical: [[Open Questions|OQ-012]] (favourites-only filter), [[Open Questions|OQ-013]] (immediate Retry on capacity exhaustion).
 
 ## Immediate human prerequisites
 

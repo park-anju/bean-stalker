@@ -13,24 +13,26 @@ import { FixtureCafeProvider } from './providers/fixtureCafeProvider.js';
 
 const env = loadServerEnv();
 
-const cafeProvider: CafeProvider =
-  env.cafeProvider === 'fixture'
-    ? new FixtureCafeProvider()
-    : new GooglePlacesProvider({
-        apiKey: env.googlePlacesServerKey,
-        timeoutMs: env.googlePlacesTimeoutMs,
-      });
-
-// Global metered-provider guard: unlimited for fixture mode (fixture requests
-// do not cost money), a real monthly cap for live mode. The in-memory guard is
-// NOT a production financial hard cap — see docs/10_DECISIONS/ADR-008.
+// Fixture mode needs no Google credential and no metered-provider cap.
+// Live mode requires both — env validation enforces it; these guards are a
+// belt-and-braces narrowing for the type checker (ADR-009 fail-closed config).
+let cafeProvider: CafeProvider;
 let usageGuard: ProviderUsageGuard;
 if (env.cafeProvider === 'live') {
+  if (env.googlePlacesServerKey === undefined) {
+    throw new Error('GOOGLE_PLACES_SERVER_KEY is required when CAFE_PROVIDER=live');
+  }
   if (env.providerMonthlyRequestLimit === undefined) {
     throw new Error('PROVIDER_MONTHLY_REQUEST_LIMIT is required when CAFE_PROVIDER=live');
   }
+  cafeProvider = new GooglePlacesProvider({
+    apiKey: env.googlePlacesServerKey,
+    timeoutMs: env.googlePlacesTimeoutMs,
+  });
+  // The in-memory guard is NOT a production financial hard cap — see ADR-008.
   usageGuard = new InMemoryProviderUsageGuard(env.providerMonthlyRequestLimit);
 } else {
+  cafeProvider = new FixtureCafeProvider();
   usageGuard = new UnlimitedProviderUsageGuard();
 }
 

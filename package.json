@@ -10,6 +10,7 @@
   "scripts": {
     "postinstall": "pnpm --filter \"./packages/*\" run build",
     "brain:validate": "node scripts/validate-brain.mjs",
+    "security:frontend": "pnpm --filter @bean-stalker/web run build",
     "predev": "pnpm --filter \"./packages/*\" run build",
     "dev": "pnpm --parallel --filter \"./apps/*\" --filter \"./packages/*\" run dev",
     "lint": "eslint .",

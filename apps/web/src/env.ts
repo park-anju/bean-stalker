@@ -1,8 +1,13 @@
 import { z } from 'zod';
-import { formatValidationError } from '@bean-stalker/contracts';
+import { formatValidationError, HttpOriginSchema } from '@bean-stalker/contracts';
 
 const ClientEnvSchema = z.object({
-  VITE_API_BASE_URL: z.url(),
+  // The API origin the client prefixes onto `/api/v1/...` — a bare http/https
+  // origin, trailing slash tolerated, no path/query (H06).
+  VITE_API_BASE_URL: HttpOriginSchema,
+  // Browser-visible by design (H06 / ADR-009): the Maps JavaScript key and Map
+  // ID ship in the bundle; they are protected Google-side (referrer + API
+  // restrictions), not by being hidden. They are NOT secrets.
   VITE_GOOGLE_MAPS_BROWSER_KEY: z.string().min(1),
   VITE_GOOGLE_MAPS_MAP_ID: z.string().min(1),
 });

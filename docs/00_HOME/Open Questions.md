@@ -5,7 +5,7 @@ status: approved
 version: 1.0
 authority: execution
 owner: Project Owner
-updated: 2026-08-28
+updated: 2026-09-03
 ---
 # Open Questions
 
@@ -102,3 +102,11 @@ updated: 2026-08-28
 **Status:** open; raised while implementing T10. T10's stated scope (persistence boundary + `FavoriteButton` + `FavoritesPage`) did not include a new Discovery filter control, and adding one would touch T09's `FilterBar` and either extend T02's `filterCafes` (which currently only knows `minRating`/`openNow`) or filter by membership in `applyDiscoveryFilters`. FR-014's "view" half is satisfied by `/favorites`.
 
 **Resolution point:** decide during T12 (responsive + accessibility polish) or a dedicated follow-up whether a "favourites only" checkbox on the Discovery list is worth the small `FilterBar`/`filterCafes` change, or whether the dedicated `/favorites` page is a sufficient "filter to favourites" affordance for P0. Do not silently add or drop it.
+
+## OQ-013 — Immediate Retry button on `PROVIDER_CAPACITY_EXHAUSTED`
+
+**Question:** H05's 503 `PROVIDER_CAPACITY_EXHAUSTED` state offers the same explicit **Retry** button as every other retryable error. If exhaustion represents a *monthly/global* allowance, an immediate retry is very unlikely to succeed, so the button could read as misleading.
+
+**Status:** open; non-blocking; raised during H07 review. Current behaviour is deliberate and defensible: the button never auto-retries (the query is `retry: false`), the copy already says "temporarily unavailable — try again later", and the allowance *could* reset (month rollover) or be raised operationally, so a manual retry is not pointless. Changing it would touch H05's `isRetryable`/`SearchStatePanel`, which is out of H07 scope.
+
+**Resolution point:** decide during H08 (mobile/accessibility QA) or a dedicated follow-up whether `PROVIDER_CAPACITY_EXHAUSTED` should instead show a no-retry informational state (or a "retry later" affordance without an immediate button). Do not change H05 solely to resolve this.

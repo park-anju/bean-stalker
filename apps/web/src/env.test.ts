@@ -26,10 +26,18 @@ describe('loadClientEnv', () => {
     expect(() => loadClientEnv(withoutApiUrl)).toThrowError(/VITE_API_BASE_URL/);
   });
 
-  it('fails fast on a malformed API base URL', () => {
-    expect(() => loadClientEnv({ ...validEnv, VITE_API_BASE_URL: 'not-a-url' })).toThrowError(
-      /VITE_API_BASE_URL/,
-    );
+  it('fails fast on a malformed or non-origin API base URL', () => {
+    for (const bad of ['not-a-url', 'localhost:3001', 'ftp://x', 'http://x/api/v1']) {
+      expect(() => loadClientEnv({ ...validEnv, VITE_API_BASE_URL: bad })).toThrowError(
+        /VITE_API_BASE_URL/,
+      );
+    }
+  });
+
+  it('normalises a trailing slash on the API base URL', () => {
+    expect(
+      loadClientEnv({ ...validEnv, VITE_API_BASE_URL: 'http://localhost:3001/' }).apiBaseUrl,
+    ).toBe('http://localhost:3001');
   });
 
   it('fails fast when the required Maps browser key is missing', () => {

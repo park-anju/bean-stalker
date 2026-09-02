@@ -5,7 +5,7 @@ status: approved
 version: 1.0
 authority: navigation
 owner: Project Owner
-updated: 2026-08-28
+updated: 2026-09-03
 ---
 # Decision Index
 
@@ -19,6 +19,7 @@ updated: 2026-08-28
 | [[ADR-006 TanStack Query Server State]] | TanStack Query for search server state | Accepted | web data flow |
 | [[ADR-007 Cost-Safe Search Orchestration]] | disable auto-refetch/retry for the billable search query; add fixture-provider mode + Map ID env | Accepted | web data flow, cost, env |
 | [[ADR-008 Metered Provider Cost Controls]] | per-client rate limit + global fail-closed usage guard; consume-before-dispatch, no refund on failure; in-memory guard is not a production hard cap; privacy-safe logging | Accepted | API, cost, privacy, env |
+| [[ADR-009 API Security Posture]] | credential classification; fail-closed live config; origin validation; frontend build secret gate; strict CORS + minimal explicit security headers + body/request limits + canonical NOT_FOUND; no auth/sessions | Accepted | API, security, env |
 
 ## ADR status vocabulary
 
