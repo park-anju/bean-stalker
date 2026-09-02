@@ -43,7 +43,7 @@ export function SearchStatePanel({ view, onRetry }: SearchStatePanelProps) {
 
   if (view.isEmpty) {
     return (
-      <p className="search-state search-state--empty">
+      <p className="search-state search-state--empty" role="status">
         No cafes were found near this location. Try a different point.
       </p>
     );

@@ -21,9 +21,7 @@ test.describe('location resolution — no permission granted', () => {
   }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Use my current location' }).click();
-    await expect(page.getByRole('status', { name: 'Location status' })).toContainText(
-      /permission was denied/i,
-    );
+    await expect(page.getByRole('alert')).toContainText(/permission was denied/i);
 
     await page.getByLabel('Latitude').fill('1.55');
     await page.getByLabel('Longitude').fill('110.36');

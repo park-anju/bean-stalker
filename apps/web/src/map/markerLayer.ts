@@ -10,8 +10,10 @@ interface TrackedMarker {
   handler: () => void;
 }
 
+// Mirrors --color-accent / --color-text in app.css (kept in sync manually —
+// the Google marker pin cannot read CSS custom properties).
 const SELECTED_PIN = {
-  background: '#b5651d',
+  background: '#a85a17',
   borderColor: '#2b2118',
   glyphColor: '#ffffff',
   scale: 1.3,

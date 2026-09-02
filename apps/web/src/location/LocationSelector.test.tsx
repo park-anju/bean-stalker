@@ -60,7 +60,7 @@ describe('LocationSelector', () => {
     render(<Harness />);
 
     await user.click(screen.getByRole('button', { name: 'Use my current location' }));
-    expect(await screen.findByRole('status')).toHaveTextContent(/permission was denied/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/permission was denied/i);
 
     await user.type(screen.getByLabelText('Latitude'), '1.55');
     await user.type(screen.getByLabelText('Longitude'), '110.36');
@@ -83,7 +83,7 @@ describe('LocationSelector', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Using Home (1.5500, 110.3600).');
   });
 
-  it('rejects invalid manual coordinates with an accessible error message', async () => {
+  it('rejects invalid manual coordinates with an accessible error alert tied to the fields', async () => {
     const user = userEvent.setup();
     render(<Harness />);
 
@@ -91,7 +91,15 @@ describe('LocationSelector', () => {
     await user.type(screen.getByLabelText('Longitude'), '0');
     await user.click(screen.getByRole('button', { name: 'Use this location' }));
 
-    expect(await screen.findByRole('status')).toHaveTextContent(/enter a valid latitude/i);
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/enter a valid latitude/i);
+
+    // the error is programmatically associated with both coordinate inputs
+    const latitude = screen.getByLabelText('Latitude');
+    const longitude = screen.getByLabelText('Longitude');
+    expect(latitude).toHaveAttribute('aria-invalid', 'true');
+    expect(latitude).toHaveAttribute('aria-describedby', alert.id);
+    expect(longitude).toHaveAttribute('aria-describedby', alert.id);
   });
 
   it('disables the current-location button while resolving, without disabling the manual form', async () => {

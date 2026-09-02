@@ -22,9 +22,10 @@ describe('SearchStatePanel', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/searching for nearby cafes/i);
   });
 
-  it('distinguishes an empty successful result from an error', () => {
+  it('distinguishes an empty successful result from an error and announces it politely', () => {
     renderPanel({ status: 'success', cafes: [], fetchedAt: 'now', isEmpty: true });
-    expect(screen.getByText(/no cafes were found/i)).toBeInTheDocument();
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent(/no cafes were found/i);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 

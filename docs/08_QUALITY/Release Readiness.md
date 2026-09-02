@@ -2,7 +2,7 @@
 id: QA-RELEASE-READINESS
 type: quality-spec
 status: approved
-version: 1.1
+version: 1.2
 authority: canonical
 owner: Project Owner
 updated: 2026-09-03
@@ -32,9 +32,9 @@ updated: 2026-09-03
 - [ ] Geolocation denial → manual location works.
 - [ ] Live search returns real cafe data.
 - [ ] Empty vs error are distinct.
-- [ ] Missing optional fields display honestly.
+- [x] Missing optional fields display honestly — H08 long-content/missing-data fixture: "No rating data" / "Hours unavailable" / omitted address, no `undefined`/`NaN`.
 - [ ] List/map selection is coherent.
-- [ ] Sort/filter/favourites work.
+- [x] Sort/filter/favourites work — verified at 320 px and keyboard-only in H08 (no extra provider requests).
 
 ### Quality
 - [ ] `pnpm lint`
@@ -43,8 +43,8 @@ updated: 2026-09-03
 - [ ] `pnpm build` (includes `scripts/check-frontend-dist-secrets.mjs`)
 - [ ] `pnpm e2e`
 - [ ] `node scripts/validate-brain.mjs`
-- [ ] responsive smoke test (H08)
-- [ ] keyboard/accessibility smoke test (H08)
+- [x] responsive smoke test — H08: no page-level horizontal scroll at 320–768 px / 200% zoom in any state; `tests/e2e/mobile.spec.ts` + `accessibility.spec.ts` regression-guard 320 px.
+- [x] keyboard/accessibility smoke test — H08: keyboard-only core flow, visible focus, assertive location-error alerts, WCAG AA contrast, WCAG 2.2 checkbox target size; `@axe-core/playwright` zero-violation scan of 9 states. Formal audit still out of scope.
 
 ### Documentation
 - [ ] README has setup, env variables, architecture and demo.

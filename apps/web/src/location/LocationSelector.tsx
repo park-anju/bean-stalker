@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { ManualLocationForm } from './ManualLocationForm.js';
 import type { LocationState } from './locationState.js';
 import type { ManualLocationInput } from './useLocation.js';
@@ -23,6 +24,19 @@ export function LocationSelector({
   submitManualLocation,
 }: LocationSelectorProps) {
   const isResolvingCurrent = state.status === 'resolving' && state.source === 'current';
+  const errorId = useId();
+
+  const errorMessage = state.status === 'error' ? state.message : undefined;
+  // A manual-submission validation error is associated with the lat/long
+  // fields; a geolocation error is not tied to any field.
+  const manualErrorId = state.status === 'error' && state.source === 'manual' ? errorId : undefined;
+
+  const statusMessage =
+    state.status === 'resolved'
+      ? describeResolved(state)
+      : isResolvingCurrent
+        ? 'Finding your current location…'
+        : '';
 
   return (
     <div className="location-selector">
@@ -34,13 +48,23 @@ export function LocationSelector({
         {isResolvingCurrent ? 'Locating…' : 'Use my current location'}
       </button>
 
-      <ManualLocationForm onSubmit={submitManualLocation} />
+      <ManualLocationForm
+        onSubmit={submitManualLocation}
+        errorMessageId={manualErrorId}
+        invalid={manualErrorId !== undefined}
+      />
 
+      {/* A polite live region for progress/success; a separate assertive
+          alert (mounted only on failure) so a denied-permission or invalid
+          -coordinates message interrupts rather than being missed. */}
       <p role="status" aria-label="Location status" className="location-status">
-        {state.status === 'resolved' && describeResolved(state)}
-        {state.status === 'error' && state.message}
-        {isResolvingCurrent && 'Finding your current location…'}
+        {statusMessage}
       </p>
+      {errorMessage !== undefined && (
+        <p id={errorId} role="alert" className="location-status location-status--error">
+          {errorMessage}
+        </p>
+      )}
     </div>
   );
 }

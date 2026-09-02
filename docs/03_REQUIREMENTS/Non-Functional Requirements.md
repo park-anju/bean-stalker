@@ -2,10 +2,10 @@
 id: REQ-NONFUNCTIONAL
 type: requirements-spec
 status: approved
-version: 1.0
+version: 1.1
 authority: canonical
 owner: Project Owner
-updated: 2026-08-28
+updated: 2026-09-03
 ---
 # Non-Functional Requirements
 
@@ -21,8 +21,12 @@ On a normal broadband connection, local UI interactions (sort/filter/favourite) 
 ## NFR-004 — accessibility
 Primary flows are keyboard operable; controls have accessible names; selected/favourite/open states are not conveyed only by color; map is supplementary to a usable list.
 
+**H08 baseline (2026-09-03, [[UX Contract]] §"H08 baseline", [[Implementation Handoffs]] `H08`):** keyboard-only core flow verified (location → search → select → favourite); assertive `role="alert"` for location errors with `aria-invalid`/`aria-describedby` field association; polite `role="status"` for search progress/empty; interactive/link text meets WCAG 2.1 AA contrast; the "Open now only" checkbox meets the WCAG 2.2 24 px target-size minimum; `@axe-core/playwright` scans 9 representative states with zero violations (supplement to manual review, not a conformance claim). Formal wording: *designed and tested against relevant WCAG 2.2 principles with automated and manual keyboard/mobile checks* — not "certified".
+
 ## NFR-005 — responsive design
 Core flows remain usable at common mobile and desktop widths.
+
+**H08 baseline:** no unintended page-level horizontal scroll at 320–768 px (and at 200% zoom) in any state — initial, results, filtered-empty, empty, error, favourites, 404 — including long / non-ASCII / missing-data cafe content. Regression-guarded in `tests/e2e/mobile.spec.ts` and `tests/e2e/accessibility.spec.ts`.
 
 ## NFR-006 — reliability
 API/provider failure does not crash the application or silently present stale/empty data as a fresh success.

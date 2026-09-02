@@ -4,9 +4,17 @@ import type { ManualLocationInput } from './useLocation.js';
 
 export interface ManualLocationFormProps {
   onSubmit: (input: ManualLocationInput) => void;
+  /** id of the error message element to point the coordinate fields at. */
+  errorMessageId?: string;
+  /** Whether the last manual submission failed validation. */
+  invalid?: boolean;
 }
 
-export function ManualLocationForm({ onSubmit }: ManualLocationFormProps) {
+export function ManualLocationForm({
+  onSubmit,
+  errorMessageId,
+  invalid = false,
+}: ManualLocationFormProps) {
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [label, setLabel] = useState('');
@@ -37,6 +45,8 @@ export function ManualLocationForm({ onSubmit }: ManualLocationFormProps) {
           value={latitude}
           onChange={(event) => setLatitude(event.target.value)}
           required
+          aria-invalid={invalid || undefined}
+          aria-describedby={errorMessageId}
         />
       </div>
       <div className="form-field">
@@ -51,6 +61,8 @@ export function ManualLocationForm({ onSubmit }: ManualLocationFormProps) {
           value={longitude}
           onChange={(event) => setLongitude(event.target.value)}
           required
+          aria-invalid={invalid || undefined}
+          aria-describedby={errorMessageId}
         />
       </div>
       <div className="form-field">

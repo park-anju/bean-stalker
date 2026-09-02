@@ -2,10 +2,10 @@
 id: IFACE-UX-CONTRACT
 type: interface-spec
 status: approved
-version: 1.0
+version: 1.1
 authority: canonical
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-09-03
 ---
 # UX Contract
 
@@ -48,6 +48,33 @@ Explain that search failed without pretending there are zero cafes. Offer retry/
 - map actions have equivalent list actions;
 - status messages use suitable live-region semantics where useful;
 - do not encode rating/open/favourite state only by color.
+
+### H08 baseline (tested 2026-09-03, [[Implementation Handoffs]] `H08`)
+
+- **Target viewports:** 320 / 360 / 375 / 390 / 430 / 768 px plus a
+  short-height landscape check. No unintended page-level horizontal scroll
+  at 320 px in any state (asserted in `tests/e2e/mobile.spec.ts` and
+  `accessibility.spec.ts`).
+- **Contrast:** interactive/link text meets WCAG 2.1 AA (`--color-accent`
+  is `#a85a17`, ≥4.5:1 on both `--color-bg` and `--color-surface`). Verified
+  by `axe-core` across 9 representative states.
+- **Target size:** the "Open now only" checkbox is 1.5 rem (24 px), meeting
+  the WCAG 2.2 minimum; standalone links ("Open in Google Maps", the 404
+  home link) carry vertical padding for a comfortable tap target. Inline
+  links inside a sentence are left at text size (WCAG 2.2 inline exception).
+- **Errors:** location failures (denied permission, invalid coordinates)
+  render in an assertive `role="alert"`; invalid manual coordinates set
+  `aria-invalid` + `aria-describedby` on both coordinate inputs. Search
+  progress/empty use polite `role="status"`; search failures use
+  `role="alert"` with an explicit (never automatic) Retry.
+- **Motion:** Bean Stalker adds no custom CSS animation/transition; card
+  scroll-into-view uses the instant default. Google Maps' own pan/zoom
+  animation is outside Bean Stalker's control.
+- **Automated scanning:** `@axe-core/playwright` (dev-only; excluded from
+  the production bundle) scans Discovery (initial / results / filtered
+  -empty / empty / error), the location-error state, Favorites (populated /
+  empty) and 404. A clean axe run supplements — does not replace — manual
+  keyboard/mobile review and is **not** a WCAG-conformance claim.
 
 ## Tone
 

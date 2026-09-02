@@ -10,7 +10,7 @@ updated: 2026-09-03
 # Bean Stalker — Pre-T08 Project Checkpoint
 
 **Checkpoint status:** PAUSED — external billing/payment blocker
-**Current development phase:** P0 MVP feature implementation complete; pre-T08 hardening milestones H02–H07 complete; H08 (mobile & accessibility QA) is next READY
+**Current development phase:** P0 MVP feature implementation complete; pre-T08 hardening milestones H02–H08 complete; H09 (architecture documentation) is next READY
 **Next milestone:** T08 — Restricted-Credential Live Google Provider Smoke
 
 ---
@@ -230,7 +230,7 @@ reload /favorites   → 0 searches
 Only a deliberate committed cafe search is intended to consume the Google Places provider.
 
 Before public release, additional controls were required. Status after
-hardening milestones H02–H07 ([[ADR-008 Metered Provider Cost Controls]],
+hardening milestones H02–H08 ([[ADR-008 Metered Provider Cost Controls]],
 [[ADR-009 API Security Posture]]):
 
 ```text
@@ -249,8 +249,11 @@ restricted API credentials             PENDING — Google Cloud (T08)
 durable/shared usage guard             PENDING — deployment (BLK-004)
 trustProxy / HSTS                      PENDING — deployment (BLK-003)
 usage monitoring                       PENDING — deployment
-mobile & accessibility QA              H08 (next READY)
-architecture docs / portfolio README   H09 / H10
+mobile & accessibility QA              DONE (H08 — WCAG AA contrast, 24 px
+                                       target size, assertive error alerts,
+                                       320 px + keyboard e2e, axe scan)
+architecture docs                      H09 (next READY)
+portfolio README                       H10
 ```
 
 ---
