@@ -852,3 +852,81 @@ Append verified evidence between implementation tasks/sessions. Do not replace h
 - **Remaining blockers (unchanged):** [[Known Blockers|BLK-001]] Google credentials; [[Known Blockers|BLK-002]] deployment target; [[Known Blockers|BLK-003]] Google-side quotas/budget/key restrictions + `trustProxy` + HSTS; [[Known Blockers|BLK-004]] durable/shared usage guard; `T08` live provider smoke. `OQ-010` / `OQ-011` / `OQ-012` / `OQ-013` unchanged (H09 documented them as open, resolved none). Deployment topology remains **unresolved** and is now explicitly documented as such ([[System Architecture]] §4).
 
 - **Next safe task:** **H10 — Portfolio README preparation** is now the single next `READY` task (deps H09 satisfied). T08 stays **BLOCKED**. Stopping here per instruction — not starting H10, T08, release or deployment.
+
+---
+
+### `H10` — Portfolio README preparation
+
+- **Date:** 2026-09-03
+- **Executor:** Claude Code
+- **Starting commit:** `930c12c` (Record H09 architecture documentation handoff evidence)
+- **Ending commit:** `0fddb9a` (Complete H10: public-facing portfolio README)
+- **Nature:** documentation + doc-asset milestone. **0 runtime code changes** (`apps/**` `.ts`/`.tsx`, `packages/**` untouched). Rewrote the root `README.md`; fixed two `.env.example` files that broke the documented copy-and-run path.
+
+- **Baseline.** Branch `master` @ `930c12c`. `pnpm test` **291** (contracts 28, domain 31, api 78, web 154); `pnpm e2e` **39**; brain **78 governed notes**; lint / format / typecheck / build (secret gate) clean.
+
+- **README problems found (the old `README.md`).**
+  - Titled "Bean Stalker Project Intelligence Vault" — an **internal** framing; opened with "Open the root folder as an Obsidian vault" and Obsidian-style double-bracket wiki links (which don't render on GitHub).
+  - **Stale status:** "implementation has **not** been claimed"; "Planning stack"; "Exact dependency versions are intentionally not claimed until bootstrap"; "`apps/web/` — React/Vite application **after bootstrap**".
+  - Wrong command: "`npm run brain:validate`" (it is `pnpm` / `node scripts/validate-brain.mjs`).
+  - Listed `packages/contracts/` but not `packages/domain/`.
+  - No product positioning beyond one sentence, no engineering highlights, no architecture, no honest limitations, no accessibility/cost/privacy framing, no fixture-mode setup.
+
+- **`.env.example` defects found + fixed (doc-asset, no runtime code).** The documented path — `cp *.env.example → .env(.local); pnpm dev` — **failed for both apps**:
+  - `apps/web/.env.example` had `VITE_GOOGLE_MAPS_BROWSER_KEY=` (blank). `apps/web/src/env.ts` requires `z.string().min(1)`, so Vite's empty-string value failed validation and the SPA would not boot. → set to a **labelled placeholder** (`local-dev-placeholder-not-a-real-key`) with a comment that any placeholder passes and the map then shows its unavailable state.
+  - `apps/api/.env.example` had `GOOGLE_PLACES_SERVER_KEY=` (present but empty). `apps/api/src/env.ts` has `z.string().min(1).optional()` — `.optional()` accepts *absent*, not *empty*, so `--env-file` setting it to `""` failed validation **even in fixture mode**. → the line is now **commented out**, with a comment to uncomment it only for live mode. (A more robust future option: have the env schema coerce `""` → `undefined`. Flagged, not done — out of H10 scope.)
+  - **Verified:** after the fixes, `pnpm dev` from freshly copied examples starts cleanly — web on `:5173`, API on `:3001`, `GET /health` → `{"status":"ok"}` with the H07 security headers; the fixture cafe list renders (5 cafes, honest labels); `places.googleapis.com` requests = **0**.
+
+- **New `README.md` structure** (single file, ~260 lines, skimmable):
+
+  | Section | Purpose |
+  |---|---|
+  | Title + 2-paragraph intro | what it is / why the engineering is the point |
+  | **Status** table | feature-complete P0, fixture-verified, live provider **blocked**, no deployment, not production-ready / not WCAG-certified |
+  | Why Bean Stalker? | focused discovery vs. generic map; the metered-API / sensitive-location / failure angle |
+  | Features | implemented + verified only; explicit "not in the MVP" line |
+  | **Engineering highlights** | cost-safe orchestration · runtime validation · privacy-conscious location · abuse/budget protection · provider isolation (ASCII tree) · security boundary · tested accessibility |
+  | Architecture | **one** simplified Mermaid runtime diagram + 4 bullet invariants + "deployment topology — unresolved"; links `docs/05_ARCHITECTURE/System Architecture.md` |
+  | Technology stack | table, verified versions; "Server-side database: none" |
+  | Privacy & data handling | optional geo, transient coords, no history/DB/logs; **live mode does transmit coords to Google** (no false "never leaves device") |
+  | Cost & abuse controls | frontend + backend discipline; in-memory guard is **not** a prod hard cap |
+  | Accessibility | precise wording — "designed and tested against relevant WCAG 2.2 principles…", **not** certified; the evidence list |
+  | Testing | current counts (291 / 39), layer table, "no Google credential / `maps.googleapis.com` blocked" |
+  | Running locally | `pnpm install` → copy `.env.example` → `pnpm dev`; **fixture mode** explained; map-vs-list distinction; honest live-mode paragraph |
+  | Environment configuration | points to `.env.example` + Environment Contract; the one secret named |
+  | Project structure | compact annotated tree |
+  | **Known limitations** | live smoke not done · no deployment · in-memory guard · no accounts/DB · no screenshots · no LICENSE |
+  | Future direction | live verification + deploy hardening; PWA; **post-MVP concept (clearly labelled, "not designed or planned")**: multi-participant fair meeting-point |
+  | Documentation | 7 high-value `docs/` links only (architecture / SDD / privacy / cost / threat model / env / errors) — no Task Status / Handoffs / execution bookkeeping |
+  | Attribution & license | Maps Platform ToS/attribution is a pre-deployment check (not done); **no license currently declared** |
+
+- **Accuracy audit (every significant claim re-verified against code).** map/list selection sync ✔ (`markerLayer` + `DiscoveryPage` shared `selectedCafeId`); favourites local-only ✔ (`favoritesStorage`, no server, no query wrapper); all auto-refetch off ✔ (`useCafeSearch.ts`: `retry:false`, `refetchOnWindowFocus/Reconnect/Mount:false`, `refetchInterval:false`, `staleTime 5min`); usage guard is monthly ✔ (`utcMonthKey`, UTC `YYYY-MM`); 16 KiB body limit rejects before guard/provider ✔ (ADR-009, `security.test.ts`); one marker per `placeId` ✔; distance is straight-line Haversine ✔; React 19 / Vite 8 / React Router 7 / TanStack Query 5 / Zod 4 / Fastify 5 / `@fastify/cors` 11 / Node 20+ ✔ (`package.json` files); test counts 291 / 39 ✔ (re-run). Fixture mode needs no **Places** key ✔; it still tries to load the **Maps JavaScript** bootstrap when a location is set — with a placeholder key that fails auth and the map area shows Google's own "couldn't load the map" notice while the list/filters/favourites are unaffected — the README says exactly this (a minor future polish: `CafeMap` could catch `gm_authFailure` and show its own message; flagged, not done).
+
+- **Link / Markdown / Mermaid verification.**
+  - All 12 relative `docs/**` link targets + `apps/*/.env.example` + `scripts/validate-brain.mjs` exist on disk (checked); spaces in paths are `%20`-encoded; the one in-page anchor (`#known-limitations`) matches its heading.
+  - The single README Mermaid block **parses** with `mermaid.parse()` (mermaid v11, one-off local jsdom harness — `pnpm add` then `pnpm remove`; `package.json` / `pnpm-lock.yaml` unchanged).
+  - `README.md` is in `.prettierignore` (repo convention) so `pnpm format` does not touch it; tables/fences hand-checked.
+  - No fake badges, no fabricated deployment URL, no "production ready", no real secret.
+
+- **Commands run.**
+
+| Command | Result |
+|---|---|
+| `node scripts/validate-brain.mjs` | **PASSED** — 22 required files, 78 governed notes, 0 unresolved wiki links |
+| `pnpm lint` | passed — exit 0 |
+| `pnpm format` | passed — `prettier --check .` clean |
+| `pnpm typecheck` | passed — 4/4 packages |
+| `pnpm test` | passed — **291** (unchanged; no runtime code touched) |
+| `pnpm build` | passed — `frontend-secret-check PASSED`; `axe` absent from bundle |
+| `pnpm e2e` | passed — **39/39** chromium |
+| `pnpm dev` (copied `.env.example`s, fixture) | **clean start** — web `:5173`, API `:3001`, `/health` ok + H07 headers, fixture list renders |
+| `mermaid.parse()` (README diagram) | pass |
+| `git diff --stat` | `README.md` + 2 `.env.example` + `docs/**` only — no runtime code, no `package.json`, no lockfile |
+
+- **Regression evidence.** No `apps/**`/`packages/**` source, config, contract or dependency changed. `pnpm test` (291) and `pnpm e2e` (39) are byte-for-byte the H09 numbers. The only functional change is that the two `.env.example` files now produce a **working** `pnpm dev` where before they errored — a strict improvement, covered by the manual cold-start verification above (the env schemas and their tests are unchanged).
+
+- **Provider proof:** Real Google **Places** requests made: **0** · Real Google credentials used: **0** · Google Cloud Billing required: **NO**. (During cold-start verification the browser fetched the Google **Maps JavaScript** bootstrap with the placeholder key — auth-failed, no map rendered, no billable dynamic-map load, no `places.googleapis.com` traffic; this is the pre-existing T06 behaviour the README now documents, and the automated suite blocks `maps.googleapis.com` entirely.)
+
+- **Remaining blockers (unchanged):** [[Known Blockers|BLK-001]] Google credentials; [[Known Blockers|BLK-002]] deployment target; [[Known Blockers|BLK-003]] Google-side quotas/budget/key restrictions + `trustProxy` + HSTS; [[Known Blockers|BLK-004]] durable/shared usage guard; `T08` live provider smoke. `OQ-010`–`OQ-013` unchanged. New deferred packaging items recorded in [[Pre-T08 Project Checkpoint]] / [[Release Readiness]]: portfolio screenshots / demo GIF, a repository `LICENSE`, the Maps Platform attribution/ToS pre-deployment check.
+
+- **Next safe task:** **none.** H02–H10 are all `DONE`; no `H`- or `T`-task is `READY`. `T08` stays **BLOCKED**. The next step is a human decision — provision Google Cloud to unblock `T08`, or accept the project as a fixture-verified portfolio artefact. Stopping here per instruction.
