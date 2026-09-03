@@ -1,1 +1,0 @@
-console.log(JSON.stringify({systemMessage:"Before ending substantial Bean Stalker work, persist verified task status, current project state, decisions, blockers and handoff evidence. Never mark work complete from intention alone."}));
