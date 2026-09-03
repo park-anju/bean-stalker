@@ -8,3 +8,6 @@ test-results/
 !.env.example
 .DS_Store
 *.log
+.obsidian/
+*.canvas
+Bean-Stalker-Brain-*.zip
