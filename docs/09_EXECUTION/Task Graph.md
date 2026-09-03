@@ -45,6 +45,7 @@ flowchart TD
   H09 --> H10[H10 Portfolio README]
 ```
 
-Done: T00–T07, T09, T10, H02–H09. `H10` is the next `READY` task. `T08` is
-`BLOCKED` (credentials); `T11`–`T15` are gated on it. See [[Task Status]] for
+Done: T00–T07, T09, T10, **H02–H10** (the full pre-T08 hardening + docs chain).
+**No task is `READY`.** `T08` is `BLOCKED` (Google credentials / Google-side +
+deployment configuration); `T11`–`T15` are gated on it. See [[Task Status]] for
 canonical execution state.

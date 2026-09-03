@@ -11,11 +11,14 @@ updated: 2026-09-03
 
 ## Active objective
 
-Hardening milestone **H09** (architecture documentation) is DONE, on top of H02–H08. Documentation-only — **0 code changes**. [[System Architecture]] was rewritten as the authoritative **as-built** reference (v2.0): seven verified Mermaid views (system context, container/runtime, cafe-search sequence + failure table, state ownership, location data lifecycle, cost/abuse guardrails, provider abstraction), plus shared-package boundaries, query/cache rules, selection sync, favourite/error/security/test architecture, an explicit non-goals section, a labelled future/blocked section, and an as-built corrections table. [[SDD]] → v1.1 points to it. The H08 closure addendum (manual landscape verification 667 × 375 / 844 × 390 PASS) is recorded. **0 real Google requests.** No task is IN_PROGRESS.
+**The full pre-T08 hardening + documentation chain H02–H10 is complete.** H10 (final of the chain) rewrote the root `README.md` from an internal vault-pointer into a public-facing portfolio entry — product framing, features, engineering highlights, one simplified Mermaid runtime diagram linking [[System Architecture]], honest status + known-limitations, fixture-mode setup — and fixed two `.env.example` defects that broke the documented `pnpm dev` copy-and-run path (blank `VITE_GOOGLE_MAPS_BROWSER_KEY`; present-but-empty `GOOGLE_PLACES_SERVER_KEY`). No runtime code changed. `pnpm dev` from the copied examples now starts both apps clean. **0 real Google Places requests.** No task is IN_PROGRESS.
 
-## Next READY tasks
+## Next actionable step
 
-- **`H10` — Portfolio README preparation.** Dependency `H09` `DONE`. Needs no Google credentials. This is the next actionable task.
+- **No `H`- or `T`-task is `READY`.** Everything that remains (`T08` live smoke, then `T11`–`T15`) is gated on `T08`.
+- `T08` is **BLOCKED** on [[Known Blockers|BLK-001]] / [[Known Blockers|BLK-003]] / [[Known Blockers|BLK-004]] — Google Cloud project, restricted credentials, quotas, budget alert; and before public release, a durable/shared usage guard + `trustProxy`/HSTS topology.
+- The next step is a **human decision**: provision Google Cloud to unblock `T08`, or accept the project as a fixture-verified portfolio artefact.
+- Deferred packaging: portfolio screenshots / demo GIF, a repository `LICENSE`, the Google Maps Platform attribution/ToS pre-deployment check.
 - `T08` — restricted-credential live provider smoke — still BLOCKED on [[Known Blockers|BLK-001]] / [[Known Blockers|BLK-003]]. `T11`–`T15` are gated on it.
 - Before **public release** (not T08): a durable/shared production usage guard ([[Known Blockers|BLK-004]]), `trustProxy`/HSTS for the chosen topology, Google-side quotas/budget/key restrictions.
 - Deferred, non-critical: [[Open Questions|OQ-012]] (favourites-only filter), [[Open Questions|OQ-013]] (immediate Retry on capacity exhaustion).

@@ -46,23 +46,25 @@ line, which stays gated on T08.
 | H07 | Backend security hardening | H06 | DONE | [[Threat Model]], [[ADR-009 API Security Posture]] |
 | H08 | Mobile & accessibility QA | H07 | DONE | [[UX Contract]], [[Non-Functional Requirements]] |
 | H09 | Architecture documentation | H08 | DONE | [[System Architecture]] v2.0, [[SDD]] |
-| H10 | Portfolio README preparation | H09 | READY | [[Release Readiness]], [[Golden Demo Scenario]] |
+| H10 | Portfolio README preparation | H09 | DONE | `README.md`, [[Release Readiness]] |
 
 ## Notes
 
-- **`H10` is the next `READY` task** (dependency `H09` `DONE`). H09 rewrote
-  [[System Architecture]] as the comprehensive **as-built** reference (v2.0):
-  seven verified views — system context, container/runtime, cafe-search
-  sequence + failure table, state ownership, location data lifecycle,
-  cost/abuse guardrail flow, provider abstraction — plus shared-package
-  boundaries, query/cache, selection sync, favourites, error, security and
-  test architecture, an explicit non-goals section, a labelled future/blocked
-  section, and the as-built corrections it found. No code changed. See
-  [[Implementation Handoffs]] `H09`.
-- With `T09`/`T10` and H02–H09 `DONE`, **no `T`-numbered task is `READY`** — every remaining `T11`–`T15` sits behind `T08`.
+- **No `H`-task is `READY`.** H02–H10 are all `DONE`. H10 rewrote the root
+  `README.md` as a public-facing portfolio entry (product framing, features,
+  engineering highlights, a simplified architecture diagram linking
+  [[System Architecture]], honest status/limitations, fixture-mode setup) and
+  fixed two `.env.example` defects that broke the documented copy-and-run
+  path. No runtime code changed. See [[Implementation Handoffs]] `H10`.
+- With `T09`/`T10` and H02–H10 `DONE`, **no task is `READY`** — every remaining
+  `T11`–`T15` sits behind `T08`, which is `BLOCKED` on Google credentials /
+  Google-side + deployment configuration. The project is now
+  **resume-ready from the fixture-backed engineering/documentation
+  perspective**, with live-provider verification and production deployment
+  still blocked/deferred.
 - `T08` is `BLOCKED` on [[Known Blockers|BLK-001]] (real restricted Google credentials) and [[Known Blockers|BLK-003]]; its dependency `T07` is `DONE`. It is the gate for the rest of the graph. H02–H05 delivered the in-process server-side cost/privacy controls that [[Known Blockers|BLK-003]] listed; the Google-side and deployment-topology configuration, plus a durable usage guard ([[Known Blockers|BLK-004]]), remain.
 - `T11` needs `T08`; `T12` needs `T09` + `T10` + `T11`; `T13`–`T15` follow. All `PENDING` until the developer configures Google credentials/quotas.
-- Ordinary MVP feature implementation is complete after T10 ([[MVP Scope]] P0 feature set); H02–H09 (logging privacy, cost controls, graceful exhaustion, secrets/config hardening, API security, mobile/accessibility QA, architecture documentation) are complete. Remaining pre-release work: H10 (portfolio README), then the T08-gated live smoke / failure-race hardening / verification / deploy / demo.
+- Ordinary MVP feature implementation is complete after T10 ([[MVP Scope]] P0 feature set); **H02–H10 are complete** (logging privacy, cost controls, graceful exhaustion, secrets/config hardening, API security, mobile/accessibility QA, architecture documentation, portfolio README). Remaining pre-release work is entirely T08-gated: live smoke → failure-race hardening → verification → deploy → demo.
 - Minor deferred items: [[Open Questions|OQ-012]] ("favourites only" Discovery filter), [[Open Questions|OQ-013]] (immediate Retry on `PROVIDER_CAPACITY_EXHAUSTED`) — H08 reviewed OQ-013 and left it open (current behaviour is acceptable; no evidence to force a change to H05). Neither is on the critical path.
 
 ## Update rule
