@@ -2,15 +2,15 @@
 id: ARCH-SYSTEM
 type: architecture-spec
 status: approved
-version: 2.0
+version: 2.1
 authority: canonical
 owner: Project Owner
-updated: 2026-09-03
+updated: 2026-09-19
 ---
 # System Architecture
 
 > **Scope.** This note is the authoritative **as-built** architecture reference
-> for Bean Stalker after T00–T07, T09, T10 and hardening milestones H02–H08.
+> for Bean Stalker after T00–T07, T09, T10 and hardening milestones H02–H11.
 > Every diagram and claim here is verified against repository code, the shared
 > contracts, the environment schemas, the accepted ADRs and the tests. Design
 > *intent* lives in [[SDD]]; normalized data shapes live in [[Data Model]];
@@ -105,7 +105,7 @@ flowchart TD
   subgraph browser["Browser runtime — apps/web (Vite build)"]
     router["React Router<br/>/ , /favorites , * (404)"]
     disc["DiscoveryPage<br/>owns selectedCafeId + filters"]
-    loc["location/<br/>useLocation + LocationSelector + ManualLocationForm"]
+    loc["location/<br/>LocationProvider + useLocation + LocationSelector<br/>GeolocationAdapter → browser adapter"]
     tq["TanStack Query<br/>useCafeSearch — the billable query"]
     apiclient["search/apiClient.ts<br/>the single browser to API call"]
     cafes["cafes/<br/>CafeList, CafeCard, FilterBar, filterState, formatCafe"]
@@ -166,7 +166,7 @@ flowchart TD
 | Directory | Responsibility |
 |---|---|
 | `components/` | `AppShell` (skip link, landmarks, `FavoritePersistenceNotice`) + `Header` (two nav links). |
-| `location/` | Current + manual search-centre acquisition: `locationState` (reducer), `useLocation`, `browserGeolocation` (the only `navigator.geolocation` touch), `geolocationErrors`, `LocationSelector`, `ManualLocationForm`. |
+| `location/` | Session-scoped current-location acquisition: `LocationProvider`, `locationState` (reducer), `useLocation`, `GeolocationAdapter` + `browserGeolocation` (the only `navigator.geolocation` touch), `geolocationErrors`, and `LocationSelector`. The Permissions API is not required or used as a gate. Raw coordinate UI is absent. |
 | `search/` | `apiClient` (the single browser→API boundary), `searchRequest` (SearchCenter→request + query key), `useCafeSearch` (cost-safe TanStack Query hook), `errorCopy`. |
 | `cafes/` | `CafeList`/`CafeCard`/`CafeSummary` (the accessible primary surface), `SearchStatePanel`, `FilterBar` + `filterState` (local sort/filter, delegating to `packages/domain`), `formatCafe`. |
 | `map/` | `CafeMap` (owns one `google.maps.Map`), `googleMapsLoader` (promise-deduped script loader), `markerLayer` (imperative, non-React marker owner). |
@@ -238,15 +238,15 @@ not mistake an omission for an undocumented decision.
 
 ## 5. C — Cafe search sequence (successful committed search)
 
-The path of one deliberate search, from a committed `SearchCenter` to rendered
-results. `apps/web` never calls Google Places directly; `apps/api` is the only
-holder of the web-service key.
+The path of the automatic initial search, from a committed `SearchCenter` to
+rendered results. `apps/web` never calls Google Places directly; `apps/api` is
+the only holder of the web-service key.
 
 ```mermaid
 sequenceDiagram
   autonumber
   actor U as User
-  participant LS as LocationSelector / useLocation
+  participant LS as LocationProvider / useLocation
   participant DP as DiscoveryPage
   participant UQ as useCafeSearch (TanStack Query)
   participant AC as apiClient.searchCafes
@@ -256,7 +256,9 @@ sequenceDiagram
   participant CP as CafeProvider
   participant GP as Google Places API (New)
 
-  U->>LS: grant location OR submit manual lat/lng
+  DP->>LS: enter Discover with no usable location
+  LS->>U: browser location permission prompt
+  U->>LS: grant location
   LS->>LS: SearchCenterSchema.parse → resolved SearchCenter
   LS-->>DP: state.center
   DP->>UQ: useCafeSearch(center)
@@ -335,7 +337,6 @@ flowchart TD
     sel["selectedCafeId (DiscoveryPage useState)"]
     flt["filters: minRating / openNowOnly / sortBy"]
     locst["location resolution state (reducer)"]
-    manin["manual lat/lng/label input (form useState)"]
   end
 
   subgraph persist["Persistent local client state (browser, durable)"]
@@ -358,7 +359,7 @@ flowchart TD
 | Category | Where it lives | Lifetime | Notes |
 |---|---|---|---|
 | **Server-derived** | TanStack Query cache in the browser | 5 min fresh / 10 min GC / tab close | `CafeSearchResponse` and its `Cafe[]`. Not stored in any global client store ([[ADR-006 TanStack Query Server State]]). The **server keeps no copy** after the response is sent. |
-| **Transient UI** | React `useState` / `useReducer` in the browser | until re-render / navigation / tab close | `selectedCafeId`, `filters`, `LocationState`, manual-input fields. Never persisted, never sent to `apps/api`. |
+| **Transient UI** | React `useState` / `useReducer` in the browser | page state until navigation; `LocationState` for the app session / tab | `selectedCafeId`, `filters`, and session-scoped `LocationState`. Never persisted. The resolved center is sent only through the cafe-search request. |
 | **Persistent local** | one `localStorage` key on the viewer's browser | until the user clears it | `FavoriteStore` (`{version:1, cafes:[{placeId, savedAt, snapshot:Cafe}]}`). Private to that browser; never synced. |
 | **Server operational** | Fastify process memory | current rate-limit window / current UTC month; **lost on restart** | Rate-limit window counters, the in-memory monthly provider-usage count. **Not user data** — see below. |
 
@@ -383,15 +384,16 @@ application session-stateful or introduce user data.
 
 ## 7. E — Location data lifecycle
 
-How a search location is acquired, used and disposed of. Two acquisition paths
-feed the **same** downstream pipeline.
+How a search location is acquired, used and disposed of. Platform acquisition is
+separate from the existing search pipeline.
 
 ```mermaid
 flowchart TD
   subgraph acq["Acquisition (browser)"]
-    perm["Browser geolocation permission prompt<br/>(only on 'Use my current location' click)"]
+    enter["Enter Discover with no usable session location"]
+    adapter["GeolocationAdapter<br/>browser implementation today"]
+    geo["Web Geolocation API<br/>authoritative success/error; may show native prompt"]
     gps["Precise coordinates in browser memory<br/>(GeolocationPosition)"]
-    manual["User-typed latitude / longitude<br/>(+ optional label)"]
   end
 
   sc["SearchCenter (validated by SearchCenterSchema)<br/>held in the location reducer state"]
@@ -401,8 +403,7 @@ flowchart TD
   gp["GooglePlacesProvider → places:searchNearby<br/>(live mode only)"]
   google["Google Places API (New)"]
 
-  perm --> gps --> sc
-  manual --> sc
+  enter --> adapter --> geo --> gps --> sc
   sc --> req --> https --> fa --> gp --> google
 
   subgraph notstored["Where the user's SearchCenter is deliberately NOT retained"]
@@ -411,19 +412,26 @@ flowchart TD
     n3["no application search-history feature"]
     n4["no analytics / profiling"]
     n5["not in application logs — the request serializer emits only method + path;<br/>the body (which carries center) is never serialized; a redact list covers manual log calls (H02)"]
-    n6["not in the response — the server keeps no copy after replying"]
+    n6["no server retention after the response is sent"]
   end
 ```
 
 **Retention today**
 
-- The user's `SearchCenter` exists in **browser memory** for the life of the
-  page (in the location reducer state and inside the TanStack Query key/cache
+- The user's `SearchCenter` exists in **browser memory** for the application
+  session (in `LocationProvider` reducer state and inside the TanStack Query key/cache
   entry). It is **not** written to `localStorage`.
 - On the wire it travels once, over HTTPS, in the `POST` body to `apps/api`.
 - `apps/api` uses it to build the provider request and to echo `searchCenter`
   in the response, then **discards it** — no store, no log
   ([[Privacy Boundaries]], [[Data Handling Policy]], H02).
+
+**Platform boundary:** `browserGeolocation.ts` is the only browser-specific
+acquisition adapter. It feature-detects Web Geolocation and rejects an explicitly
+insecure context before acquisition (production requires HTTPS; localhost is the
+development exception). It deliberately does not require or gate on the Permissions
+API. Browser-native prompt presentation, saved site decisions, browser policy and
+device/OS location services are outside Bean Stalker's control.
 
 ### `SearchCenter` vs. a saved cafe's coordinates — not the same thing
 
@@ -450,7 +458,7 @@ plus the controls that are still deployment-phase.
 
 ```mermaid
 flowchart TD
-  s0["A deliberate committed search"] --> s1
+  s0["One validated location commit<br/>(automatic after acquisition or explicit retry)"] --> s1
 
   subgraph implemented["Implemented today (in-process)"]
     s1["T07 frontend request discipline<br/>one request per committed SearchCenter;<br/>no refetch on focus/reconnect/mount/interval;<br/>retry: false; stable query key"]
@@ -736,8 +744,8 @@ Architecture-level view; the decisions and rationale are
 | Unit | Vitest | distance, sort/filter, favourite store ops, Google response mapper, env schema, rate limiter, usage guard, error copy | none / pure |
 | Component | Vitest + React Testing Library | location outcomes, search-state panel, cafe card missing-field handling, filter/reset, favourite toggle + persistence, map lifecycle (mocked `google.maps`) | injected fake / mocked |
 | API integration | Vitest + `app.inject` | request validation, the pipeline (rate limit → guard → provider), provider error mapping, logging privacy, security headers / CORS / body limit / `NOT_FOUND` | injected `CafeProvider` fake / `InMemoryProviderUsageGuard` |
-| End-to-end | Playwright (headless Chromium) | discovery journey, filters, favourites, capacity 429/503, location denied, mobile 320 px + keyboard | `page.route` fakes the API; `maps.googleapis.com` is `route.abort()`ed |
-| Accessibility | `@axe-core/playwright` (dev-only) | zero-violation scan of 9 representative states (`.cafe-map__surface` excluded — third-party) | as e2e |
+| End-to-end | Playwright (headless Chromium) | automatic location success, denied/retry/unavailable/timeout/unsupported, one-search deduplication, discovery journey, filters, favourites, capacity 429/503, mobile 320 px + keyboard | browser geolocation is mocked; `page.route` fakes the API; `maps.googleapis.com` is `route.abort()`ed |
+| Accessibility | `@axe-core/playwright` (dev-only) | zero-violation scan of 10 representative states (`.cafe-map__surface` excluded — third-party) | as e2e |
 
 **Fixture vs. mock vs. `FixtureCafeProvider`:**
 

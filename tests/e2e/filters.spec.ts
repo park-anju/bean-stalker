@@ -46,10 +46,8 @@ async function stubSearch(page: Page) {
   return counter;
 }
 
-async function setManualLocation(page: Page) {
-  await page.getByLabel('Latitude').fill('1.55');
-  await page.getByLabel('Longitude').fill('110.36');
-  await page.getByRole('button', { name: 'Use this location' }).click();
+async function waitForAutomaticLocation(page: Page) {
+  await expect(page.getByRole('status', { name: 'Location status' })).toHaveText('Location found.');
 }
 
 function cardNames(page: Page) {
@@ -68,7 +66,7 @@ test.describe('local filtering & sorting', () => {
     const search = await stubSearch(page);
 
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
     await expect(page.getByRole('region', { name: 'Cafe results' })).toBeVisible();
     expect(await cardNames(page)).toEqual(['Unrated Roastery', 'Old Town Cafe', 'Kopi Kenangan']);
     expect(search.count).toBe(1);
@@ -105,7 +103,7 @@ test.describe('local filtering & sorting', () => {
     );
 
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
     await expect(page.getByRole('region', { name: 'Cafe results' })).toBeVisible();
 
     await page.getByLabel('Minimum rating').selectOption('4.5+');
@@ -119,7 +117,7 @@ test.describe('local filtering & sorting', () => {
     await page.setViewportSize({ width: 375, height: 667 });
 
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
     await expect(page.getByLabel('Minimum rating')).toBeVisible();
     await page.getByLabel('Open now only').check();
 

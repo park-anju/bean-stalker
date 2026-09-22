@@ -2,10 +2,10 @@
 id: REQ-SRS
 type: requirements-spec
 status: approved
-version: 1.0
+version: 1.1
 authority: canonical
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-09-19
 ---
 # Software Requirements Specification
 
@@ -19,7 +19,7 @@ This SRS defines observable P0 behaviour for [[MVP Scope]]. Domain meaning comes
 Anonymous user of the web application. No account or server-side profile exists in P0.
 
 ### Google Maps Platform
-External provider supplying map capability, location-selection tooling and Places data. It is not a trusted product actor; responses are validated/normalized at integration boundaries.
+External provider supplying map capability and Places data. It is not a trusted product actor; responses are validated/normalized at integration boundaries.
 
 ## 3. System context
 
@@ -35,18 +35,14 @@ flowchart LR
 ## 4. Primary use cases
 
 ### UC-01 Discover cafes from current location
-1. Visitor requests current location.
-2. Browser returns coordinates or a permission/error outcome.
+1. Visitor opens Discover; the app requests current location once when no usable session location exists.
+2. The app calls Web Geolocation once; the browser may show its native permission
+   UI and then returns coordinates or a permission/error outcome.
 3. On success the app creates a valid search center.
-4. Visitor triggers/accepts cafe search.
+4. The resolved center automatically enables the existing cafe search.
 5. API validates request, calls provider with bounded parameters/field mask, normalizes results.
 6. Web renders list + markers.
 7. Visitor can refine results.
-
-### UC-02 Discover cafes from manual location
-1. Visitor searches/selects a location.
-2. Selected location resolves to coordinates.
-3. Same search flow as UC-01 continues.
 
 ### UC-03 Save favourites
 1. Visitor selects favourite action on a cafe.
@@ -55,10 +51,17 @@ flowchart LR
 4. Removing favourite updates local state.
 
 ### UC-04 Recover from failure
-- permission denial → manual location route;
-- invalid input → local/API validation message;
+- permission denial → settings guidance + explicit retry;
+- unavailable/timeout/unexpected location → bounded error + explicit retry;
+- unsupported geolocation or insecure production context → distinct bounded non-retryable state;
 - provider/network failure → error state + retry;
 - empty result → explicit empty state, not error.
+
+There is no human-friendly manual place/address fallback in the current scope.
+Raw coordinate entry is not exposed to users.
+The Permissions API is not a hard dependency. Bean Stalker cannot control native
+permission UI, override a saved browser/site denial or enable device/OS location
+services. Production geolocation requires HTTPS; localhost is supported for development.
 
 ## 5. Functional requirements
 

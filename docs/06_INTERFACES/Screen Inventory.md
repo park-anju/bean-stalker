@@ -2,10 +2,10 @@
 id: IFACE-SCREEN-INVENTORY
 type: interface-spec
 status: approved
-version: 1.0
+version: 1.1
 authority: canonical
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-09-19
 ---
 # Screen Inventory
 
@@ -13,9 +13,9 @@ updated: 2026-08-27
 
 Primary page containing:
 - brand/header;
-- location control/current-location action;
+- automatic current-location status and explicit retry action;
 - radius/rank controls as scoped;
-- search action;
+- automatic initial search plus explicit provider retry when relevant;
 - filter/sort bar;
 - results list;
 - map;
@@ -32,8 +32,7 @@ Desktop may use split list/map. Mobile prioritizes list usability with map avail
 
 ## Component inventory
 
-- `LocationSearch`
-- `UseCurrentLocationButton`
+- `LocationSelector`
 - `SearchControls`
 - `FilterBar`
 - `CafeList`

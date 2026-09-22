@@ -1,193 +1,169 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { useLocation } from './useLocation.js';
 import type { GeolocationAdapter } from './browserGeolocation.js';
-
-function fakeAdapter(
-  outcome: { position: GeolocationPosition } | { error: { code: number } },
-): GeolocationAdapter {
-  return {
-    getCurrentPosition: () =>
-      'position' in outcome ? Promise.resolve(outcome.position) : Promise.reject(outcome.error),
-  };
-}
 
 const fakePosition = {
   coords: { latitude: 1.5535, longitude: 110.3593 },
 } as GeolocationPosition;
 
-const originalGeolocation = Object.getOwnPropertyDescriptor(globalThis.navigator, 'geolocation');
-
-beforeEach(() => {
-  // isGeolocationSupported() checks the ambient navigator, independent of the
-  // injected adapter used by these tests — stub a minimal presence so the
-  // support check passes and the fake adapter path actually runs.
-  Object.defineProperty(globalThis.navigator, 'geolocation', {
-    value: {},
-    configurable: true,
-  });
-});
-
-afterEach(() => {
-  if (originalGeolocation) {
-    Object.defineProperty(globalThis.navigator, 'geolocation', originalGeolocation);
-  } else {
-    Reflect.deleteProperty(globalThis.navigator, 'geolocation');
-  }
-});
+function makeAdapter(options?: {
+  secure?: boolean;
+  supported?: boolean;
+  getCurrentPosition?: GeolocationAdapter['getCurrentPosition'];
+}): GeolocationAdapter {
+  return {
+    isSecureContext: vi.fn(() => options?.secure ?? true),
+    isSupported: vi.fn(() => options?.supported ?? true),
+    getCurrentPosition: vi.fn(options?.getCurrentPosition ?? (() => Promise.resolve(fakePosition))),
+  };
+}
 
 describe('useLocation — current location', () => {
-  it('resolves successfully and normalizes the browser position into a SearchCenter', async () => {
-    const { result } = renderHook(() => useLocation(fakeAdapter({ position: fakePosition })));
+  it('resolves successfully and normalizes the platform position into a SearchCenter', async () => {
+    const adapter = makeAdapter();
+    const { result } = renderHook(() => useLocation(adapter));
 
-    await act(async () => {
-      await result.current.requestCurrentLocation();
-    });
+    await act(() => result.current.requestInitialLocation());
 
     expect(result.current.state).toEqual({
       status: 'resolved',
       source: 'current',
       center: { latitude: 1.5535, longitude: 110.3593 },
     });
+    expect(adapter.getCurrentPosition).toHaveBeenCalledTimes(1);
   });
 
   it('reflects a resolving state while the request is in flight', async () => {
     let resolvePosition!: (position: GeolocationPosition) => void;
-    const pendingAdapter: GeolocationAdapter = {
+    const adapter = makeAdapter({
       getCurrentPosition: () => new Promise((resolve) => (resolvePosition = resolve)),
-    };
-    const { result } = renderHook(() => useLocation(pendingAdapter));
-
-    act(() => {
-      void result.current.requestCurrentLocation();
     });
-    expect(result.current.state).toEqual({ status: 'resolving', source: 'current' });
+    const { result } = renderHook(() => useLocation(adapter));
 
-    await act(async () => {
-      resolvePosition(fakePosition);
-    });
+    act(() => void result.current.requestInitialLocation());
+    await waitFor(() =>
+      expect(result.current.state).toEqual({ status: 'resolving', source: 'current' }),
+    );
+
+    await act(async () => resolvePosition(fakePosition));
     await waitFor(() => expect(result.current.state.status).toBe('resolved'));
   });
 
-  it('maps a permission-denied failure without breaking the hook', async () => {
-    const { result } = renderHook(() => useLocation(fakeAdapter({ error: { code: 1 } })));
-
-    await act(async () => {
-      await result.current.requestCurrentLocation();
+  it('treats the Geolocation API denial as authoritative and does not retry automatically', async () => {
+    const adapter = makeAdapter({
+      getCurrentPosition: () => Promise.reject({ code: 1 }),
     });
-
-    expect(result.current.state).toMatchObject({
-      status: 'error',
-      source: 'current',
-      reason: 'LOCATION_PERMISSION_DENIED',
-    });
-  });
-
-  it('maps a position-unavailable failure to LOCATION_UNAVAILABLE', async () => {
-    const { result } = renderHook(() => useLocation(fakeAdapter({ error: { code: 2 } })));
-
-    await act(async () => {
-      await result.current.requestCurrentLocation();
-    });
-
-    expect(result.current.state).toMatchObject({ status: 'error', reason: 'LOCATION_UNAVAILABLE' });
-  });
-
-  it('maps a timeout failure to LOCATION_UNAVAILABLE and allows retry afterward', async () => {
-    const { result } = renderHook(() => useLocation(fakeAdapter({ error: { code: 3 } })));
-
-    await act(async () => {
-      await result.current.requestCurrentLocation();
-    });
-    expect(result.current.state).toMatchObject({ status: 'error', reason: 'LOCATION_UNAVAILABLE' });
-
-    // Retrying re-enters the resolving state — a real retry action, not stuck.
-    act(() => {
-      void result.current.requestCurrentLocation();
-    });
-    expect(result.current.state).toEqual({ status: 'resolving', source: 'current' });
-  });
-
-  it('reports LOCATION_UNAVAILABLE without ever calling the adapter when geolocation is unsupported', async () => {
-    Reflect.deleteProperty(globalThis.navigator, 'geolocation');
-    let adapterCalled = false;
-    const adapter: GeolocationAdapter = {
-      getCurrentPosition: () => {
-        adapterCalled = true;
-        return Promise.resolve(fakePosition);
-      },
-    };
     const { result } = renderHook(() => useLocation(adapter));
 
-    await act(async () => {
-      await result.current.requestCurrentLocation();
-    });
-
-    expect(adapterCalled).toBe(false);
-    expect(result.current.state).toMatchObject({ status: 'error', reason: 'LOCATION_UNAVAILABLE' });
-  });
-});
-
-describe('useLocation — manual location', () => {
-  it('accepts a valid manual location', () => {
-    const { result } = renderHook(() => useLocation(fakeAdapter({ position: fakePosition })));
-
-    act(() => {
-      result.current.submitManualLocation({ latitude: 1.55, longitude: 110.36, label: 'Home' });
-    });
-
-    expect(result.current.state).toEqual({
-      status: 'resolved',
-      source: 'manual',
-      center: { latitude: 1.55, longitude: 110.36, label: 'Home' },
-    });
-  });
-
-  it('rejects invalid manual coordinates with a VALIDATION_ERROR, not a crash', () => {
-    const { result } = renderHook(() => useLocation(fakeAdapter({ position: fakePosition })));
-
-    act(() => {
-      result.current.submitManualLocation({ latitude: 999, longitude: 0 });
-    });
+    await act(() => result.current.requestInitialLocation());
 
     expect(result.current.state).toMatchObject({
       status: 'error',
-      source: 'manual',
-      reason: 'VALIDATION_ERROR',
+      reason: 'LOCATION_PERMISSION_DENIED',
+      kind: 'permission-denied',
+    });
+    expect(adapter.getCurrentPosition).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [2, 'position-unavailable'],
+    [3, 'timeout'],
+    [99, 'unexpected'],
+  ] as const)('maps geolocation code %s to a handled %s state', async (code, kind) => {
+    const adapter = makeAdapter({
+      getCurrentPosition: () => Promise.reject({ code }),
+    });
+    const { result } = renderHook(() => useLocation(adapter));
+
+    await act(() => result.current.requestInitialLocation());
+
+    expect(result.current.state).toMatchObject({
+      status: 'error',
+      reason: 'LOCATION_UNAVAILABLE',
+      kind,
+      canRetry: true,
     });
   });
 
-  it('lets a manual submission replace a failed current-location attempt', async () => {
-    const { result } = renderHook(() => useLocation(fakeAdapter({ error: { code: 1 } })));
+  it('reports unsupported geolocation without calling the adapter and without offering futile retry', async () => {
+    const adapter = makeAdapter({ supported: false });
+    const { result } = renderHook(() => useLocation(adapter));
 
-    await act(async () => {
-      await result.current.requestCurrentLocation();
+    await act(() => result.current.requestInitialLocation());
+
+    expect(result.current.state).toMatchObject({
+      status: 'error',
+      kind: 'unsupported',
+      canRetry: false,
     });
-    expect(result.current.state.status).toBe('error');
+    expect(adapter.getCurrentPosition).not.toHaveBeenCalled();
+  });
+
+  it('reports an insecure context distinctly without attempting geolocation', async () => {
+    const adapter = makeAdapter({ secure: false });
+    const { result } = renderHook(() => useLocation(adapter));
+
+    await act(() => result.current.requestInitialLocation());
+
+    expect(result.current.state).toMatchObject({
+      status: 'error',
+      kind: 'insecure-context',
+      canRetry: false,
+    });
+    expect(adapter.getCurrentPosition).not.toHaveBeenCalled();
+  });
+
+  it('deduplicates concurrent acquisition requests', async () => {
+    let resolvePosition!: (position: GeolocationPosition) => void;
+    const adapter = makeAdapter({
+      getCurrentPosition: () => new Promise((resolve) => (resolvePosition = resolve)),
+    });
+    const { result } = renderHook(() => useLocation(adapter));
 
     act(() => {
-      result.current.submitManualLocation({ latitude: 1.55, longitude: 110.36 });
+      void result.current.requestInitialLocation();
+      void result.current.requestInitialLocation();
+      void result.current.requestCurrentLocation();
     });
+    await waitFor(() => expect(adapter.getCurrentPosition).toHaveBeenCalledTimes(1));
 
-    expect(result.current.state).toEqual({
-      status: 'resolved',
-      source: 'manual',
-      center: { latitude: 1.55, longitude: 110.36 },
-    });
+    await act(async () => resolvePosition(fakePosition));
+  });
+
+  it('allows an explicit retry to succeed after the initial attempt fails', async () => {
+    const getCurrentPosition = vi
+      .fn<GeolocationAdapter['getCurrentPosition']>()
+      .mockRejectedValueOnce({ code: 3 })
+      .mockResolvedValueOnce(fakePosition);
+    const adapter = makeAdapter({ getCurrentPosition });
+    const { result } = renderHook(() => useLocation(adapter));
+
+    await act(() => result.current.requestInitialLocation());
+    expect(result.current.state).toMatchObject({ status: 'error', kind: 'timeout' });
+
+    await act(() => result.current.requestCurrentLocation());
+    expect(result.current.state.status).toBe('resolved');
+    expect(getCurrentPosition).toHaveBeenCalledTimes(2);
+  });
+
+  it('accepts an already-available valid center without acquiring it again', () => {
+    const adapter = makeAdapter();
+    const center = { latitude: 1.55, longitude: 110.36 };
+    const { result } = renderHook(() => useLocation(adapter, center));
+
+    expect(result.current.state).toEqual({ status: 'resolved', source: 'current', center });
+    expect(adapter.isSecureContext).not.toHaveBeenCalled();
+    expect(adapter.getCurrentPosition).not.toHaveBeenCalled();
   });
 });
 
 describe('useLocation — reset', () => {
   it('returns to idle', () => {
-    const { result } = renderHook(() => useLocation(fakeAdapter({ position: fakePosition })));
-
-    act(() => {
-      result.current.submitManualLocation({ latitude: 1.55, longitude: 110.36 });
-    });
-    act(() => {
-      result.current.reset();
-    });
-
+    const { result } = renderHook(() =>
+      useLocation(makeAdapter(), { latitude: 1.55, longitude: 110.36 }),
+    );
+    act(() => result.current.reset());
     expect(result.current.state).toEqual({ status: 'idle' });
   });
 });

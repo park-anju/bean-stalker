@@ -40,10 +40,8 @@ async function stubSearch(page: Page) {
   return counter;
 }
 
-async function setManualLocation(page: Page) {
-  await page.getByLabel('Latitude').fill('1.55');
-  await page.getByLabel('Longitude').fill('110.36');
-  await page.getByRole('button', { name: 'Use this location' }).click();
+async function waitForAutomaticLocation(page: Page) {
+  await expect(page.getByRole('status', { name: 'Location status' })).toHaveText('Location found.');
 }
 
 // Each Playwright test runs in a fresh browser context, so localStorage starts
@@ -55,7 +53,7 @@ test.describe('favourites — local persistence', () => {
     const search = await stubSearch(page);
 
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
     await expect(page.getByRole('region', { name: 'Cafe results' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Add Kopi Kenangan to favourites' }).click();
@@ -63,10 +61,10 @@ test.describe('favourites — local persistence', () => {
       page.getByRole('button', { name: 'Remove Kopi Kenangan from favourites' }),
     ).toHaveAttribute('aria-pressed', 'true');
 
-    // Reload Discovery: re-entering the location is a genuine new search, but
-    // the favourite persisted through the reload.
+    // Reload Discovery: the new page session reacquires location automatically,
+    // while the favourite persists through the reload.
     await page.reload();
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
     await expect(
       page.getByRole('button', { name: 'Remove Kopi Kenangan from favourites' }),
     ).toHaveAttribute('aria-pressed', 'true');
@@ -96,7 +94,7 @@ test.describe('favourites — local persistence', () => {
     const search = await stubSearch(page);
 
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
     await expect(page.getByRole('region', { name: 'Cafe results' })).toBeVisible();
 
     const add = page.getByRole('button', { name: 'Add Kopi Kenangan to favourites' });
@@ -130,7 +128,7 @@ test.describe('favourites — local persistence', () => {
     await page.setViewportSize({ width: 375, height: 667 });
 
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
 
     await page.getByRole('button', { name: 'Add Kopi Kenangan to favourites' }).click();
     await expect(

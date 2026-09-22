@@ -20,10 +20,8 @@ async function blockGoogleMaps(page: Page) {
   await page.route(/maps\.googleapis\.com/, (route) => route.abort());
 }
 
-async function setManualLocation(page: Page) {
-  await page.getByLabel('Latitude').fill('1.55');
-  await page.getByLabel('Longitude').fill('110.36');
-  await page.getByRole('button', { name: 'Use this location' }).click();
+async function waitForAutomaticLocation(page: Page) {
+  await expect(page.getByRole('status', { name: 'Location status' })).toHaveText('Location found.');
 }
 
 test.describe('graceful rate / capacity exhaustion (H05)', () => {
@@ -46,7 +44,7 @@ test.describe('graceful rate / capacity exhaustion (H05)', () => {
     });
 
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
 
     const alert = page.getByRole('alert');
     await expect(alert).toContainText(/too quickly/i);
@@ -57,7 +55,9 @@ test.describe('graceful rate / capacity exhaustion (H05)', () => {
     expect(count).toBe(1);
 
     // favourites/local UI unaffected — the location is retained
-    await expect(page.getByLabel('Latitude')).toHaveValue('1.55');
+    await expect(page.getByRole('status', { name: 'Location status' })).toHaveText(
+      'Location found.',
+    );
 
     await page.getByRole('button', { name: /retry search/i }).click();
     await expect(page.getByRole('region', { name: 'Cafe results' })).toBeVisible();
@@ -84,7 +84,7 @@ test.describe('graceful rate / capacity exhaustion (H05)', () => {
     });
 
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
 
     const alert = page.getByRole('alert');
     await expect(alert).toContainText(/temporarily unavailable/i);

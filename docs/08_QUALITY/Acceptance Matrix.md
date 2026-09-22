@@ -2,16 +2,16 @@
 id: QA-ACCEPTANCE-MATRIX
 type: quality-spec
 status: approved
-version: 1.0
+version: 1.1
 authority: canonical
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-09-19
 ---
 # Acceptance Matrix
 
 | Acceptance ID | P0 evidence required | Status |
 |---|---|---|
-| AC-01 | Current-location and manual-location paths demonstrated | PLANNED |
+| AC-01 | Automatic current-location success/error/retry paths demonstrated; prompt does not become premature denial; Permissions API optional; raw coordinate UI absent | VERIFIED — fixture/mock unit + Playwright coverage (2026-09-19) |
 | AC-02 | Live search works with restricted credentials in manual smoke test | PLANNED |
 | AC-03 | List + map render same normalized result set | PLANNED |
 | AC-04 | Sort/filter rules pass tests | PLANNED |

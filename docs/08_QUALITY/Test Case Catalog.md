@@ -2,19 +2,24 @@
 id: QA-TEST-CASES
 type: catalog
 status: approved
-version: 1.0
+version: 1.1
 authority: canonical
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-09-19
 ---
 # Test Case Catalog
 
 ## Location
 
-- **TC-LOC-001** granted geolocation produces valid search center.
-- **TC-LOC-002** denied permission exposes manual location path.
-- **TC-LOC-003** unavailable/timeout does not crash app.
-- **TC-LOC-004** invalid coordinates are rejected before search.
+- **TC-LOC-001** entering Discover automatically requests geolocation; success produces a valid search center and starts one cafe search.
+- **TC-LOC-002** an already-available center causes no duplicate acquisition/search on rerender.
+- **TC-LOC-003** prompt/undecided permission invokes Web Geolocation once, stays in locating UI until resolution and does not show premature denial.
+- **TC-LOC-004** denied permission shows settings guidance and explicit retry; no cafe search runs and no automatic request loop occurs.
+- **TC-LOC-005** a user-triggered retry can resolve location and continue discovery.
+- **TC-LOC-006** Strict Mode/rerenders do not duplicate initial acquisition or cafe search.
+- **TC-LOC-007** raw latitude/longitude fields are absent from Discover.
+- **TC-LOC-008** missing Permissions API support does not prevent Web Geolocation success and automatic search.
+- **TC-LOC-009** position-unavailable/timeout/unsupported/unexpected/insecure-context outcomes leave loading and do not search; copy is bounded and raw browser errors are absent.
 
 ## Search
 

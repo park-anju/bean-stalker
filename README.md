@@ -1,9 +1,9 @@
 # Bean Stalker
 
-A location-aware **cafe discovery** web app: pick a point (your location or a manual
-latitude/longitude), search nearby cafes from Google Places data, then narrow the
-results with filtering, sorting and local favourites — on an accessible list backed
-by a synchronized map.
+A location-aware **cafe discovery** web app: open Discover, grant browser location,
+and nearby cafes are searched automatically through the existing Google Places flow.
+Results can then be narrowed with filtering, sorting and local favourites — on an
+accessible list backed by a synchronized map.
 
 It is a compact full-stack TypeScript project built to show *how* an app handles the
 parts that are usually an afterthought: a metered third-party API, sensitive location
@@ -17,7 +17,7 @@ and accessibility.
 | | |
 |---|---|
 | **P0 MVP** | Feature-complete |
-| **Verification** | Fixture- and mock-verified end to end (291 unit/integration tests, 39 Playwright e2e) |
+| **Verification** | Fixture- and mock-verified end to end (297 unit/integration tests, 48 Playwright e2e) |
 | **Live Google provider** | Implemented but **not yet smoke-tested** — blocked on Google Cloud billing / restricted-credential setup |
 | **Deployment** | None. No production environment; deployment topology is deliberately unresolved |
 | **Not** | production-ready, deployed, or WCAG-certified |
@@ -50,11 +50,13 @@ treated as architecture requirements, not polish.
 
 All implemented and verified against fixtures/mocks:
 
-- **Location** — optional browser geolocation, or manual latitude/longitude entry.
-  A denied geolocation permission never blocks the app: the manual form is always
-  available.
-- **Search** — one nearby-cafe search per chosen location, through the Bean Stalker
-  API (never the browser calling Google directly).
+- **Location** — Discover automatically requests the current browser location once
+  when the session has no usable center. Raw latitude/longitude inputs and precise
+  coordinate display are absent; denied/recoverable failures provide clear guidance
+  and an explicit retry. Web Geolocation is the baseline; the app does not depend
+  on the less consistently supported Permissions API.
+- **Search** — a successful location acquisition automatically starts one nearby-cafe
+  search through the Bean Stalker API (never the browser calling Google directly).
 - **Accessible cafe list** — name, address, rating + review count, price level,
   open / closed / *hours unavailable*, straight-line distance, and an "Open in
   Google Maps" link *only when the provider supplied one*. Missing data is shown
@@ -67,8 +69,9 @@ All implemented and verified against fixtures/mocks:
   they transform the already-fetched results in the browser.
 - **Favourites** — save / remove a cafe; favourites persist in `localStorage` on
   that browser and appear on a dedicated `/favorites` page. No account, no sync.
-- **Explicit states** — distinct loading, empty, filtered-empty, permission-error
-  and provider-error UI, with a manual (never automatic) retry.
+- **Explicit states** — distinct location-loading, denied, unavailable, timeout,
+  unsupported, search-loading, empty, filtered-empty and provider-error UI, with
+  explicit (never automatic) retries where meaningful.
 - **Responsive & accessible** — usable from 320 px wide, keyboard-operable, with
   visible focus and screen-reader-appropriate status/alert semantics.
 
@@ -213,8 +216,15 @@ decisions** and are documented as open, not chosen.
 
 ## Privacy & data handling
 
-- Browser geolocation is **optional and prompted only on an explicit click**;
-  manual latitude/longitude is a first-class alternative.
+- Browser geolocation is requested automatically only on entering Discover without
+  a usable in-memory location, or after an explicit retry. The browser controls its
+  permission prompt and saved site decision; Bean Stalker cannot force a prompt or
+  override a block.
+- Geolocation requires a secure context: localhost is supported for development and
+  a production deployment must use HTTPS. Device/OS location services and browser
+  access to them remain under the user's platform settings, not Bean Stalker's control.
+- Exact current coordinates are not displayed or persisted. There is currently no
+  human-friendly manual place/address fallback.
 - Search coordinates are used only for the active discovery flow. Bean Stalker does
   **not** persist the user's search location to `localStorage`, a server database,
   a search history, an analytics profile, or application logs.
@@ -232,7 +242,7 @@ Details: [`docs/04_AUTHORITY/Privacy Boundaries.md`](docs/04_AUTHORITY/Privacy%2
 The production provider is metered, so provider-call discipline is an architectural
 requirement:
 
-- **Frontend:** one request per chosen location; no automatic retries; no request
+- **Frontend:** one request per resolved location; no automatic retries; no request
   from re-render / focus / reconnect / map interaction / filter / sort / favourite.
 - **Backend:** per-client rate limiting, then a global usage guard that consumes an
   allowance unit *before* dispatch and does not refund it on provider failure;
@@ -258,15 +268,15 @@ formally WCAG 2.2 AA certified.
 
 Evidence:
 
-- keyboard-only core flow (location → search → select → favourite), verified in e2e;
+- keyboard-only core flow (automatic location/search → select → favourite), verified in e2e;
 - visible focus on every interactive control;
-- assertive `role="alert"` for location errors, associated with the coordinate
-  fields; polite `role="status"` for search progress and empty results;
+- assertive `role="alert"` for location errors with a clearly labelled retry where
+  meaningful; polite `role="status"` for location/search progress and empty results;
 - WCAG 2.1 AA contrast for link/button text; WCAG 2.2 24 px minimum touch target
   for the smallest control;
 - no page-level horizontal scroll at 320 / 360 / 375 / 390 / 430 / 768 px or at
   200 % zoom (automated), plus manual landscape checks at 667 × 375 and 844 × 390;
-- `@axe-core/playwright` scans of 9 representative states — **0 violations**;
+- `@axe-core/playwright` scans of 10 representative states — **0 violations**;
 - the accessible list is the primary surface; the Google map canvas is a
   third-party enhancement and outside Bean Stalker's direct accessibility control.
 
@@ -276,9 +286,9 @@ Evidence:
 
 Current baseline (H10):
 
-- **291** unit / component / API tests (Vitest): `packages/contracts` 28,
-  `packages/domain` 31, `apps/api` 78, `apps/web` 154.
-- **39** Playwright end-to-end tests, including a 9-state `@axe-core/playwright`
+- **297** unit / component / API tests (Vitest): `packages/contracts` 28,
+  `packages/domain` 31, `apps/api` 78, `apps/web` 160.
+- **48** Playwright end-to-end tests, including a 10-state `@axe-core/playwright`
   accessibility scan and a mobile / keyboard / long-content suite.
 
 Layers:
@@ -288,8 +298,8 @@ Layers:
 | contracts | schema shapes, bounds, error codes, origin validation |
 | domain | Haversine distance, sort/filter rules, favourite-store operations |
 | API | request validation, the rate-limit → usage-guard → provider pipeline, provider error mapping, privacy-safe logging, security headers / CORS / body limit / 404 |
-| components | location outcomes, cafe cards with missing fields, filter/reset, favourite persistence, map lifecycle (mocked `google.maps`) |
-| e2e | discovery journey, filters, favourites, `429`/`503` capacity, geolocation denied, 320 px + keyboard |
+| components | automatic location outcomes/retry/deduplication, cafe cards with missing fields, filter/reset, favourite persistence, map lifecycle (mocked `google.maps`) |
+| e2e | automatic geolocation success/failures/retry, one-call discovery, coordinate-UI removal, filters, favourites, `429`/`503` capacity, 320 px + keyboard |
 | accessibility | axe scans across representative states |
 
 The whole suite runs against committed fixtures and injected fake providers —
@@ -325,6 +335,9 @@ pnpm dev
 - API: <http://localhost:3001> (`GET /health` → `{"status":"ok"}`)
 
 The `.env.example` files default to **fixture mode** (`CAFE_PROVIDER=fixture`).
+Browsers treat localhost as a trustworthy development origin for geolocation.
+Production must be served over HTTPS; an arbitrary HTTP deployment will show a
+bounded secure-connection error instead of being described as permission denial.
 
 ### What fixture mode does
 
@@ -399,6 +412,12 @@ These are explicit engineering boundaries, not oversights:
   required before deploying.
 - **No user accounts, no cloud favourites, no search history, no database** — by
   design for this MVP.
+- **No human-friendly manual location fallback yet** — raw coordinate entry was
+  removed; no geocoder/autocomplete provider was added in its place.
+- **Browser-native location permission is outside application control** — Bean
+  Stalker can request Web Geolocation and explain failures, but it cannot turn on
+  device/OS location services, override browser/site denial, or guarantee that a
+  browser will reopen its native prompt after a saved block.
 - **No screenshots in the repo yet** — portfolio image capture is a later packaging
   step.
 - **No `LICENSE` file** — none is currently declared.

@@ -2,20 +2,19 @@
 id: IFACE-USER-GUIDE
 type: interface-spec
 status: approved
-version: 1.0
+version: 1.1
 authority: derived
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-09-19
 ---
 # Bean Stalker User Guide
 
 ## Find cafes near you
 
 1. Open Bean Stalker.
-2. Choose **Use my location** or select a location manually.
-3. Adjust search radius/ranking if desired.
-4. Run the search.
-5. Compare the cafe list and map markers.
+2. Respond to the browser's location permission request.
+3. Bean Stalker finds the current location and searches automatically.
+4. Compare the cafe list and map markers.
 
 ## Refine results
 
@@ -31,7 +30,16 @@ When a provider URI is available, use the Google Maps action to continue with di
 
 ## If location access is denied
 
-Bean Stalker should remain usable. Select a location manually and search from there.
+Bean Stalker explains that location is needed and shows **Try location again**.
+If access is blocked, allow location for the site in browser settings before retrying.
+The retry asks the browser for location again; it cannot force the browser to reopen
+its native permission prompt or override a saved block.
+There is not yet a human-friendly manual place/address fallback.
+
+If Bean Stalker says it could not access device location, check both device/OS
+location services and whether the browser is allowed to use them. Bean Stalker
+cannot enable those settings. Production sites must use HTTPS; localhost remains
+supported for development.
 
 ## If search fails
 

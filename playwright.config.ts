@@ -6,6 +6,8 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:5173',
+    geolocation: { latitude: 1.55, longitude: 110.36 },
+    permissions: ['geolocation'],
   },
   webServer: {
     command: 'pnpm --filter @bean-stalker/web run dev',

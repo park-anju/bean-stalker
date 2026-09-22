@@ -1,121 +1,86 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { LocationSelector } from './LocationSelector.js';
-import { useLocation } from './useLocation.js';
+import type { LocationState } from './locationState.js';
 
-// DiscoveryPage owns the single useLocation() instance shared between
-// LocationSelector and CafeMap; this harness reproduces that wiring so
-// LocationSelector's own tests still exercise real hook behaviour.
-function Harness() {
-  const location = useLocation();
-  return (
-    <LocationSelector
-      state={location.state}
-      requestCurrentLocation={location.requestCurrentLocation}
-      submitManualLocation={location.submitManualLocation}
-    />
-  );
+const requestCurrentLocation = vi.fn(async () => undefined);
+
+function renderState(state: LocationState) {
+  return render(<LocationSelector state={state} requestCurrentLocation={requestCurrentLocation} />);
 }
-
-const originalGeolocation = Object.getOwnPropertyDescriptor(globalThis.navigator, 'geolocation');
-
-function stubGeolocation(
-  getCurrentPosition: (success: PositionCallback, error?: PositionErrorCallback) => void,
-) {
-  Object.defineProperty(globalThis.navigator, 'geolocation', {
-    value: { getCurrentPosition },
-    configurable: true,
-  });
-}
-
-afterEach(() => {
-  if (originalGeolocation) {
-    Object.defineProperty(globalThis.navigator, 'geolocation', originalGeolocation);
-  } else {
-    Reflect.deleteProperty(globalThis.navigator, 'geolocation');
-  }
-});
 
 describe('LocationSelector', () => {
-  it('resolves current location and announces it via the status region', async () => {
-    stubGeolocation((success) => {
-      success({ coords: { latitude: 1.5535, longitude: 110.3593 } } as GeolocationPosition);
-    });
-    const user = userEvent.setup();
-    render(<Harness />);
-
-    await user.click(screen.getByRole('button', { name: 'Use my current location' }));
-
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Using your current location (1.5535, 110.3593).',
+  it('announces location progress and explains the privacy boundary', () => {
+    renderState({ status: 'resolving', source: 'current' });
+    expect(screen.getByRole('status', { name: 'Location status' })).toHaveTextContent(
+      'Finding your location…',
     );
+    expect(screen.getByText(/used only to find nearby cafes/i)).toBeInTheDocument();
+    expect(screen.getByText(/not saved/i)).toBeInTheDocument();
   });
 
-  it('falls back to a fully usable manual form when permission is denied', async () => {
-    stubGeolocation((_success, error) => {
-      error?.({ code: 1, message: 'denied' } as GeolocationPositionError);
+  it('announces success without exposing exact coordinates', () => {
+    renderState({
+      status: 'resolved',
+      source: 'current',
+      center: { latitude: 1.5535, longitude: 110.3593 },
     });
-    const user = userEvent.setup();
-    render(<Harness />);
-
-    await user.click(screen.getByRole('button', { name: 'Use my current location' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/permission was denied/i);
-
-    await user.type(screen.getByLabelText('Latitude'), '1.55');
-    await user.type(screen.getByLabelText('Longitude'), '110.36');
-    await user.click(screen.getByRole('button', { name: 'Use this location' }));
-
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Using a custom location (1.5500, 110.3600).',
-    );
+    const status = screen.getByRole('status', { name: 'Location status' });
+    expect(status).toHaveTextContent('Location found.');
+    expect(status).not.toHaveTextContent('1.5535');
+    expect(status).not.toHaveTextContent('110.3593');
   });
 
-  it('accepts a manual location with a label', async () => {
+  it('shows denied guidance and an explicit accessible retry action', async () => {
+    requestCurrentLocation.mockClear();
     const user = userEvent.setup();
-    render(<Harness />);
-
-    await user.type(screen.getByLabelText('Latitude'), '1.55');
-    await user.type(screen.getByLabelText('Longitude'), '110.36');
-    await user.type(screen.getByLabelText('Label (optional)'), 'Home');
-    await user.click(screen.getByRole('button', { name: 'Use this location' }));
-
-    expect(await screen.findByRole('status')).toHaveTextContent('Using Home (1.5500, 110.3600).');
-  });
-
-  it('rejects invalid manual coordinates with an accessible error alert tied to the fields', async () => {
-    const user = userEvent.setup();
-    render(<Harness />);
-
-    await user.type(screen.getByLabelText('Latitude'), '999');
-    await user.type(screen.getByLabelText('Longitude'), '0');
-    await user.click(screen.getByRole('button', { name: 'Use this location' }));
-
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/enter a valid latitude/i);
-
-    // the error is programmatically associated with both coordinate inputs
-    const latitude = screen.getByLabelText('Latitude');
-    const longitude = screen.getByLabelText('Longitude');
-    expect(latitude).toHaveAttribute('aria-invalid', 'true');
-    expect(latitude).toHaveAttribute('aria-describedby', alert.id);
-    expect(longitude).toHaveAttribute('aria-describedby', alert.id);
-  });
-
-  it('disables the current-location button while resolving, without disabling the manual form', async () => {
-    let resolvePosition!: () => void;
-    stubGeolocation((success) => {
-      resolvePosition = () =>
-        success({ coords: { latitude: 1.55, longitude: 110.36 } } as GeolocationPosition);
+    renderState({
+      status: 'error',
+      source: 'current',
+      reason: 'LOCATION_PERMISSION_DENIED',
+      kind: 'permission-denied',
+      message:
+        "Location access is blocked for this site. Change this site's Location permission in your browser settings, then choose Try location again. Bean Stalker cannot change this setting for you.",
+      canRetry: true,
     });
-    const user = userEvent.setup();
-    render(<Harness />);
 
-    await user.click(screen.getByRole('button', { name: 'Use my current location' }));
-    expect(screen.getByRole('button', { name: 'Locating…' })).toBeDisabled();
-    expect(screen.getByLabelText('Latitude')).toBeEnabled();
+    expect(screen.getByRole('alert')).toHaveTextContent(/browser settings/i);
+    await user.click(screen.getByRole('button', { name: 'Try location again' }));
+    expect(requestCurrentLocation).toHaveBeenCalledTimes(1);
+  });
 
-    resolvePosition();
-    await screen.findByRole('button', { name: 'Use my current location' });
+  it('does not offer retry when geolocation is unsupported', () => {
+    renderState({
+      status: 'error',
+      source: 'current',
+      reason: 'LOCATION_UNAVAILABLE',
+      kind: 'unsupported',
+      message: "Location isn't available in this browser.",
+      canRetry: false,
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent(/isn't available/i);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('explains the secure-context requirement without offering a futile retry', () => {
+    renderState({
+      status: 'error',
+      source: 'current',
+      reason: 'LOCATION_UNAVAILABLE',
+      kind: 'insecure-context',
+      message:
+        'Location requires a secure connection. Open Bean Stalker over HTTPS, or use localhost during development.',
+      canRetry: false,
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent(/HTTPS/i);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('contains no raw coordinate entry controls', () => {
+    renderState({ status: 'idle' });
+    expect(screen.queryByLabelText(/latitude/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/longitude/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
   });
 });

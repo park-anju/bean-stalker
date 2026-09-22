@@ -2,19 +2,26 @@
 id: DOMAIN-LOCATION-RESOLUTION
 type: domain-spec
 status: approved
-version: 1.0
+version: 2.0
 authority: canonical
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-09-19
 ---
 # Location Resolution
 
-## Supported origins
+## Supported origin
 
-1. **Current location** — browser Geolocation API after explicit user action/permission.
-2. **Manual location** — a user-selected place/location resolved by Google Maps client-side location tooling.
+**Current location** — the Discover page automatically requests browser location
+when no usable in-memory location is already available. The browser remains in
+control of its permission prompt.
 
-Both paths produce the same canonical `SearchCenter { latitude, longitude, label? }`.
+The browser adapter produces the canonical `SearchCenter { latitude, longitude,
+label? }`. Raw latitude/longitude remain valid internal coordinates but are not a
+normal user input.
+
+Bean Stalker currently has no human-friendly manual place/address fallback. Adding
+one requires a separately scoped provider/product decision; raw coordinate entry is
+not an acceptable substitute.
 
 ## Privacy invariant
 
@@ -22,17 +29,37 @@ Precise user coordinates are transient search input. P0 does not persist raw cur
 
 ## Permission outcomes
 
-- granted → resolve center and continue;
-- denied → explain and offer manual selection;
-- unavailable → explain and offer manual selection;
-- timeout → allow retry or manual selection.
+- granted → Web Geolocation resolves the center and discovery continues;
+- prompt/undecided → call `getCurrentPosition` once and let the browser present its
+  native permission UI; remain in the locating state until success or error;
+- denied → the Geolocation error moves the app to browser-settings guidance and an
+  explicit retry; no automatic loop;
+- unavailable → explain that device location services and browser access may need
+  checking, without claiming Bean Stalker can change either, and offer explicit retry;
+- timeout → explain and offer explicit retry;
+- insecure context → explain that production requires HTTPS (localhost is permitted
+  for development); do not mislabel it as permission denial or offer a futile retry;
+- unsupported → explain that browser location is unavailable; do not offer a futile retry;
+- unexpected → give bounded device/browser guidance and an explicit retry without
+  exposing the browser's raw error text.
+
+The Web Geolocation API is the authoritative acquisition path. The implementation
+does not gate acquisition on `navigator.permissions`: support and behavior vary by
+browser, and a permission hint must not suppress the browser's normal first-visit
+flow. If the Permissions API is absent or incompatible, behavior is unchanged.
+
+A browser with a saved denial may reject `getCurrentPosition` immediately without
+showing native UI. Bean Stalker can offer **Try location again** after the user
+changes site/browser settings, but cannot reopen or style the native prompt, override
+a browser policy, or enable device/OS location services.
 
 ## Accuracy
 
-Browser coordinates can be imprecise. Bean Stalker does not claim exact physical position. A user can override the search center manually.
+Browser coordinates can be imprecise. Bean Stalker does not claim exact physical position.
 
 ## Validation
 
-Latitude must be `[-90, 90]`; longitude `[-180, 180]`. Invalid centers fail before provider calls.
+Latitude must be `[-90, 90]`; longitude `[-180, 180]`. Adapter output is validated
+before it becomes a resolved center or reaches the provider flow.
 
 See [[Privacy Boundaries]], [[Search Lifecycle]] and [[Functional Requirements]].

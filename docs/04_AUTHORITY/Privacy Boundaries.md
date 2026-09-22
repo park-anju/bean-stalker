@@ -2,10 +2,10 @@
 id: AUTH-PRIVACY-BOUNDARIES
 type: authority-spec
 status: approved
-version: 1.0
+version: 1.1
 authority: canonical
 owner: Project Owner
-updated: 2026-08-28
+updated: 2026-09-19
 ---
 # Privacy Boundaries
 
@@ -15,8 +15,8 @@ Precise current-location coordinates can reveal where a person is. P0 treats the
 
 ## P0 policy
 
-- request geolocation only after a clear user action or understandable flow;
-- manual location search remains available;
+- request geolocation only in the understandable Discover onboarding flow or after an explicit retry;
+- do not expose or echo precise coordinates in the normal user interface;
 - do not store current-location history in localStorage;
 - do not create a server database of searches;
 - avoid logging raw precise coordinates;

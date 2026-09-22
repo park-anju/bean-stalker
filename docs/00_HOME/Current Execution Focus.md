@@ -2,16 +2,16 @@
 id: HOME-CURRENT-EXECUTION-FOCUS
 type: execution-state
 status: approved
-version: 1.1
+version: 1.2
 authority: execution
 owner: Project Owner
-updated: 2026-09-03
+updated: 2026-09-19
 ---
 # Current Execution Focus
 
 ## Active objective
 
-**The full pre-T08 hardening + documentation chain H02–H10 is complete.** H10 (final of the chain) rewrote the root `README.md` from an internal vault-pointer into a public-facing portfolio entry — product framing, features, engineering highlights, one simplified Mermaid runtime diagram linking [[System Architecture]], honest status + known-limitations, fixture-mode setup — and fixed two `.env.example` defects that broke the documented `pnpm dev` copy-and-run path (blank `VITE_GOOGLE_MAPS_BROWSER_KEY`; present-but-empty `GOOGLE_PLACES_SERVER_KEY`). No runtime code changed. `pnpm dev` from the copied examples now starts both apps clean. **0 real Google Places requests.** No task is IN_PROGRESS.
+**The pre-T08 hardening + documentation chain H02–H11 is complete.** H11 replaced raw coordinate entry with automatic, session-scoped browser geolocation on Discover, automatic use of the existing cafe query after success, bounded permission/error states, and explicit retry. A follow-up browser audit made Web Geolocation authoritative instead of gating on the Permissions API and added an explicit insecure-context state. The browser-specific acquisition remains behind `GeolocationAdapter`; precise centers remain memory-only. There is no human-friendly manual fallback yet. Fixture/mock tests cover prompt/pending, granted, already-available location, Permissions API missing, denied/unavailable/timeout/unsupported/insecure, retry, Strict Mode/rerender deduplication, coordinate UI removal, mobile/keyboard and axe states. **0 real Google Places requests.** No task is IN_PROGRESS.
 
 ## Next actionable step
 

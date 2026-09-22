@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Cafe } from '@bean-stalker/contracts';
 import { LocationSelector } from '../location/LocationSelector.js';
-import { useLocation } from '../location/useLocation.js';
+import { useAppLocation } from '../location/useAppLocation.js';
 import { CafeMap } from '../map/CafeMap.js';
 import { CafeList } from '../cafes/CafeList.js';
 import { FilterBar } from '../cafes/FilterBar.js';
@@ -16,7 +16,15 @@ import { useCafeSearch } from '../search/useCafeSearch.js';
 const NO_CAFES: Cafe[] = [];
 
 export function DiscoveryPage() {
-  const { state, requestCurrentLocation, submitManualLocation } = useLocation();
+  const { state, requestInitialLocation, requestCurrentLocation } = useAppLocation();
+  const automaticRequestStarted = useRef(false);
+
+  useEffect(() => {
+    if (state.status !== 'idle' || automaticRequestStarted.current) return;
+    automaticRequestStarted.current = true;
+    void requestInitialLocation();
+  }, [requestInitialLocation, state.status]);
+
   const resolvedCenter = state.status === 'resolved' ? state.center : undefined;
 
   // One search per committed SearchCenter. Local filters/sort (below), map
@@ -66,18 +74,14 @@ export function DiscoveryPage() {
       <div className="discovery__intro">
         <h1>Bean Stalker</h1>
         <p>
-          Discover nearby cafes from live Google Maps data — pick a location, then compare results
-          on the list and map and save the ones you like.
+          Discover nearby cafes from Google Maps data. We’ll use your current location to show
+          results on the list and map, then you can filter, sort and save the ones you like.
         </p>
       </div>
 
-      <LocationSelector
-        state={state}
-        requestCurrentLocation={requestCurrentLocation}
-        submitManualLocation={submitManualLocation}
-      />
+      <LocationSelector state={state} requestCurrentLocation={requestCurrentLocation} />
 
-      <SearchStatePanel view={view} onRetry={retry} />
+      {state.status === 'resolved' && <SearchStatePanel view={view} onRetry={retry} />}
 
       {hasResults && <FilterBar filters={filters} onChange={changeFilters} />}
 
@@ -87,22 +91,24 @@ export function DiscoveryPage() {
         </p>
       )}
 
-      <div className="discovery__results">
-        {displayedCafes.length > 0 && (
-          <CafeList
+      {state.status === 'resolved' && (
+        <div className="discovery__results">
+          {displayedCafes.length > 0 && (
+            <CafeList
+              cafes={displayedCafes}
+              totalCount={cafes.length}
+              selectedCafeId={selectedCafeId}
+              onSelectCafe={selectCafe}
+            />
+          )}
+          <CafeMap
+            center={resolvedCenter}
             cafes={displayedCafes}
-            totalCount={cafes.length}
             selectedCafeId={selectedCafeId}
             onSelectCafe={selectCafe}
           />
-        )}
-        <CafeMap
-          center={resolvedCenter}
-          cafes={displayedCafes}
-          selectedCafeId={selectedCafeId}
-          onSelectCafe={selectCafe}
-        />
-      </div>
+        </div>
+      )}
     </section>
   );
 }

@@ -2,10 +2,10 @@
 id: REQ-NONFUNCTIONAL
 type: requirements-spec
 status: approved
-version: 1.1
+version: 1.2
 authority: canonical
 owner: Project Owner
-updated: 2026-09-03
+updated: 2026-09-19
 ---
 # Non-Functional Requirements
 
@@ -22,6 +22,8 @@ On a normal broadband connection, local UI interactions (sort/filter/favourite) 
 Primary flows are keyboard operable; controls have accessible names; selected/favourite/open states are not conveyed only by color; map is supplementary to a usable list.
 
 **H08 baseline (2026-09-03, [[UX Contract]] §"H08 baseline", [[Implementation Handoffs]] `H08`):** keyboard-only core flow verified (location → search → select → favourite); assertive `role="alert"` for location errors with `aria-invalid`/`aria-describedby` field association; polite `role="status"` for search progress/empty; interactive/link text meets WCAG 2.1 AA contrast; the "Open now only" checkbox meets the WCAG 2.2 24 px target-size minimum; `@axe-core/playwright` scans 9 representative states with zero violations (supplement to manual review, not a conformance claim). Formal wording: *designed and tested against relevant WCAG 2.2 principles with automated and manual keyboard/mobile checks* — not "certified".
+
+**H11 update (2026-09-19):** the removed coordinate form makes its former field-association evidence historical. Automatic location progress uses a labelled polite status; failures use an assertive alert; recoverable states provide a clearly named **Try location again** button. Keyboard and axe coverage exercises the new pending, error and successful automatic flows.
 
 ## NFR-005 — responsive design
 Core flows remain usable at common mobile and desktop widths.
@@ -78,4 +80,9 @@ release blocker**, not a tuning issue.
   [[Known Blockers|BLK-003]] / [[Known Blockers|BLK-004]].
 
 ## NFR-010 — browser support
-Target current evergreen desktop/mobile browsers that support required APIs; unsupported geolocation falls back to manual location selection.
+Target current evergreen desktop/mobile browsers that support Web Geolocation. The
+Permissions API is not a hard dependency. Unsupported geolocation and explicitly
+insecure contexts produce distinct bounded states; production requires HTTPS and
+localhost is the development exception. Browser-native permission UI and device/OS
+location services remain outside application control. A human-friendly manual
+fallback is not yet implemented.

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { StrictMode, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { render, screen, within } from '@testing-library/react';
@@ -9,6 +9,8 @@ import { EMPTY_FAVORITE_STORE } from '@bean-stalker/domain';
 import { DiscoveryPage } from './DiscoveryPage.js';
 import { FavoritesProvider } from '../favorites/FavoritesProvider.js';
 import { searchCafes } from '../search/apiClient.js';
+import { LocationProvider } from '../location/LocationProvider.js';
+import type { GeolocationAdapter } from '../location/browserGeolocation.js';
 
 vi.mock('../search/apiClient.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../search/apiClient.js')>();
@@ -68,22 +70,55 @@ const OLD_TOWN: Cafe = {
   distanceMeters: 1430,
 };
 
-function renderPage() {
+const POSITION = {
+  coords: { latitude: 1.55, longitude: 110.36 },
+} as GeolocationPosition;
+
+function makeAdapter(options?: {
+  secure?: boolean;
+  getCurrentPosition?: GeolocationAdapter['getCurrentPosition'];
+}): GeolocationAdapter {
+  return {
+    isSecureContext: vi.fn(() => options?.secure ?? true),
+    isSupported: vi.fn(() => true),
+    getCurrentPosition: vi.fn(options?.getCurrentPosition ?? (() => Promise.resolve(POSITION))),
+  };
+}
+
+function renderPage(options?: {
+  adapter?: GeolocationAdapter;
+  initialCenter?: { latitude: number; longitude: number };
+  strict?: boolean;
+}) {
   const client = new QueryClient();
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>
       <FavoritesProvider initialStore={EMPTY_FAVORITE_STORE}>
-        <MemoryRouter>{children}</MemoryRouter>
+        <LocationProvider
+          adapter={options?.adapter ?? makeAdapter()}
+          initialCenter={options?.initialCenter}
+        >
+          <MemoryRouter>{children}</MemoryRouter>
+        </LocationProvider>
       </FavoritesProvider>
     </QueryClientProvider>
   );
-  return render(<DiscoveryPage />, { wrapper });
+  return render(
+    options?.strict ? (
+      <StrictMode>
+        <DiscoveryPage />
+      </StrictMode>
+    ) : (
+      <DiscoveryPage />
+    ),
+    {
+      wrapper,
+    },
+  );
 }
 
-async function resolveLocation(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText('Latitude'), '1.55');
-  await user.type(screen.getByLabelText('Longitude'), '110.36');
-  await user.click(screen.getByRole('button', { name: 'Use this location' }));
+async function resolveLocation(_user: ReturnType<typeof userEvent.setup>) {
+  await screen.findByText('Location found.');
 }
 
 function idOf(name: string): string {
@@ -119,6 +154,136 @@ beforeEach(() => {
 afterEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
+});
+
+describe('DiscoveryPage — automatic location acquisition', () => {
+  it('requests location, commits it, automatically searches, and renders results', async () => {
+    searchCafesMock.mockResolvedValue(response([KOPI]));
+    const adapter = makeAdapter();
+
+    renderPage({ adapter });
+
+    expect(screen.getByRole('status', { name: 'Location status' })).toHaveTextContent(
+      /finding your location/i,
+    );
+    await screen.findByRole('region', { name: 'Cafe results' });
+    expect(adapter.getCurrentPosition).toHaveBeenCalledTimes(1);
+    expect(searchCafesMock).toHaveBeenCalledTimes(1);
+    expect(searchCafesMock.mock.calls[0]?.[0].center).toEqual({
+      latitude: 1.55,
+      longitude: 110.36,
+    });
+  });
+
+  it('uses an already-available center without duplicate acquisition or search', async () => {
+    searchCafesMock.mockResolvedValue(response([KOPI]));
+    const adapter = makeAdapter();
+
+    const rendered = renderPage({
+      adapter,
+      initialCenter: { latitude: 1.55, longitude: 110.36 },
+    });
+    await screen.findByRole('region', { name: 'Cafe results' });
+    rendered.rerender(<DiscoveryPage />);
+
+    expect(adapter.isSecureContext).not.toHaveBeenCalled();
+    expect(adapter.getCurrentPosition).not.toHaveBeenCalled();
+    expect(searchCafesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a denied state with retry and does not search without a location', async () => {
+    const adapter = makeAdapter({
+      getCurrentPosition: () => Promise.reject({ code: 1 }),
+    });
+    renderPage({ adapter });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/browser settings/i);
+    expect(screen.getByRole('button', { name: 'Try location again' })).toBeVisible();
+    expect(searchCafesMock).not.toHaveBeenCalled();
+    expect(adapter.getCurrentPosition).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the finding state while first-visit geolocation is pending', async () => {
+    let resolvePosition!: (position: GeolocationPosition) => void;
+    const getCurrentPosition = vi.fn(
+      () => new Promise<GeolocationPosition>((resolve) => (resolvePosition = resolve)),
+    );
+    searchCafesMock.mockResolvedValue(response([KOPI]));
+    renderPage({ adapter: makeAdapter({ getCurrentPosition }) });
+
+    expect(screen.getByRole('status', { name: 'Location status' })).toHaveTextContent(
+      /finding your location/i,
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(getCurrentPosition).toHaveBeenCalledTimes(1);
+    expect(searchCafesMock).not.toHaveBeenCalled();
+
+    resolvePosition(POSITION);
+    await screen.findByRole('region', { name: 'Cafe results' });
+    expect(searchCafesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [2, /could not access your device location/i],
+    [3, /took too long/i],
+  ] as const)(
+    'leaves loading and does not search after geolocation error %s',
+    async (code, copy) => {
+      const adapter = makeAdapter({
+        getCurrentPosition: () => Promise.reject({ code }),
+      });
+      renderPage({ adapter });
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(copy);
+      expect(screen.getByRole('status', { name: 'Location status' })).toBeEmptyDOMElement();
+      expect(searchCafesMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it('retries only after user action, then automatically discovers cafes on success', async () => {
+    searchCafesMock.mockResolvedValue(response([KOPI]));
+    const getCurrentPosition = vi
+      .fn<GeolocationAdapter['getCurrentPosition']>()
+      .mockRejectedValueOnce({ code: 3 })
+      .mockResolvedValueOnce(POSITION);
+    const adapter = makeAdapter({ getCurrentPosition });
+    const user = userEvent.setup();
+    renderPage({ adapter });
+
+    await screen.findByText(/took too long/i);
+    expect(getCurrentPosition).toHaveBeenCalledTimes(1);
+    expect(searchCafesMock).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Try location again' }));
+    await screen.findByRole('region', { name: 'Cafe results' });
+    expect(getCurrentPosition).toHaveBeenCalledTimes(2);
+    expect(searchCafesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('protects the initial location and cafe requests from Strict Mode and rerenders', async () => {
+    searchCafesMock.mockResolvedValue(response([KOPI]));
+    const adapter = makeAdapter();
+    const rendered = renderPage({ adapter, strict: true });
+
+    await screen.findByRole('region', { name: 'Cafe results' });
+    rendered.rerender(
+      <StrictMode>
+        <DiscoveryPage />
+      </StrictMode>,
+    );
+
+    expect(adapter.getCurrentPosition).toHaveBeenCalledTimes(1);
+    expect(searchCafesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not expose raw latitude or longitude inputs', () => {
+    renderPage({
+      adapter: makeAdapter({ getCurrentPosition: () => Promise.reject({ code: 1 }) }),
+    });
+    expect(screen.queryByLabelText(/latitude/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/longitude/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+  });
 });
 
 describe('DiscoveryPage — local filtering & sorting (RM0: zero extra requests)', () => {

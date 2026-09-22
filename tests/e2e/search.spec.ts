@@ -39,10 +39,8 @@ async function blockGoogleMaps(page: Page) {
   await page.route(/maps\.googleapis\.com/, (route) => route.abort());
 }
 
-async function setManualLocation(page: Page) {
-  await page.getByLabel('Latitude').fill('1.55');
-  await page.getByLabel('Longitude').fill('110.36');
-  await page.getByRole('button', { name: 'Use this location' }).click();
+async function waitForAutomaticLocation(page: Page) {
+  await expect(page.getByRole('status', { name: 'Location status' })).toHaveText('Location found.');
 }
 
 test.describe('cafe search — results journey', () => {
@@ -60,7 +58,7 @@ test.describe('cafe search — results journey', () => {
     });
 
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
 
     const list = page.getByRole('region', { name: 'Cafe results' });
     await expect(list.getByRole('heading', { name: '2 cafes found' })).toBeVisible();
@@ -87,7 +85,7 @@ test.describe('cafe search — results journey', () => {
     });
 
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
 
     const card = page.getByRole('button', { name: 'Kopi Kenangan', exact: true });
     await card.focus();
@@ -103,7 +101,7 @@ test.describe('cafe search — results journey', () => {
     await page.route('**/api/v1/cafes/search', (route) => route.fulfill({ json: HAPPY_RESPONSE }));
 
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
 
     await expect(page.getByRole('status', { name: 'Map status' })).toContainText(
       /map is unavailable/i,
@@ -117,7 +115,7 @@ test.describe('cafe search — results journey', () => {
     await page.route('**/api/v1/cafes/search', (route) => route.fulfill({ json: EMPTY_RESPONSE }));
 
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
 
     await expect(page.getByText(/no cafes were found/i)).toBeVisible();
     await expect(page.getByRole('alert')).toHaveCount(0);
@@ -142,7 +140,7 @@ test.describe('cafe search — results journey', () => {
     });
 
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
 
     const alert = page.getByRole('alert');
     await expect(alert).toContainText(/temporarily unavailable/i);
@@ -158,7 +156,7 @@ test.describe('cafe search — results journey', () => {
 
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
     await expect(page.getByRole('button', { name: 'Kopi Kenangan', exact: true })).toBeVisible();
 
     const overflow = await page.evaluate(

@@ -2,10 +2,10 @@
 id: EXEC-HANDOFFS
 type: execution-state
 status: approved
-version: 1.0
+version: 1.1
 authority: execution
 owner: Project Owner
-updated: 2026-09-03
+updated: 2026-09-19
 ---
 # Implementation Handoffs
 
@@ -930,3 +930,47 @@ Append verified evidence between implementation tasks/sessions. Do not replace h
 - **Remaining blockers (unchanged):** [[Known Blockers|BLK-001]] Google credentials; [[Known Blockers|BLK-002]] deployment target; [[Known Blockers|BLK-003]] Google-side quotas/budget/key restrictions + `trustProxy` + HSTS; [[Known Blockers|BLK-004]] durable/shared usage guard; `T08` live provider smoke. `OQ-010`–`OQ-013` unchanged. New deferred packaging items recorded in [[Pre-T08 Project Checkpoint]] / [[Release Readiness]]: portfolio screenshots / demo GIF, a repository `LICENSE`, the Maps Platform attribution/ToS pre-deployment check.
 
 - **Next safe task:** **none.** H02–H10 are all `DONE`; no `H`- or `T`-task is `READY`. `T08` stays **BLOCKED**. The next step is a human decision — provision Google Cloud to unblock `T08`, or accept the project as a fixture-verified portfolio artefact. Stopping here per instruction.
+
+---
+
+### `H11` — Automatic Discover location UX
+
+- **Date:** 2026-09-19
+- **Starting commit:** `62e6522`
+- **Ending commit:** not committed; changes are present in the working tree.
+- **Requirements:** replace raw latitude/longitude entry with automatic, privacy-conscious current-location onboarding; automatically use the existing cafe query; preserve query/provider cost controls, accessibility, fixture mode and application boundaries.
+- **Changed:** `LocationProvider` now owns session-memory location state across routes. `GeolocationAdapter` contains browser support/secure-context/Geolocation behavior; `useLocation` validates adapter output, deduplicates in-flight requests, distinguishes denied/unavailable/timeout/insecure-context/unsupported/unexpected outcomes and exposes separate initial vs. user-retry operations. `DiscoveryPage` makes one guarded initial request and continues through the existing `useCafeSearch` hook after resolution. `ManualLocationForm` and its styles/tests were removed. Status copy no longer displays coordinates. Browser tests use mocked geolocation. Current architecture, requirements, UX, privacy, quality and README documentation were updated.
+- **Search-button decision:** the application had no independent Search button. The removed coordinate form's submit button committed a center, which already enabled `useCafeSearch`. H11 preserves provider-search retry but adds no Search button: successful automatic location commits the center and the existing query runs immediately.
+- **Cost/duplicate evidence:** `requestInFlight` deduplicates acquisition; the Discover effect ref prevents Strict Mode/rerender repeats; session state avoids reacquisition on client-side route return; the stable TanStack query key/cache and disabled auto-refetch settings are unchanged. Unit/component and Playwright tests assert one acquisition/search for the normal initial flow.
+- **Privacy:** no new storage, logging, analytics or transmission path. Precise location remains in browser memory and the existing map/search flows only; it is not rendered or persisted.
+- **Permission-flow correction after manual QA:** the original H11 implementation
+  queried the Permissions API and returned early on `denied`. That could put the app
+  in blocked UI without invoking Web Geolocation and also allowed insecure-origin
+  denial to be mislabeled. The correction makes `getCurrentPosition` authoritative
+  for every automatic/user-triggered acquisition, treats a missing Permissions API
+  as normal, and distinguishes an explicitly insecure context. The browser decides
+  whether native permission UI appears. The proposed `CafeMap.tsx` promise cleanup
+  was audited as unrelated and reverted; this correction contains no map change.
+- **Browser QA:** Google Chrome 152 was the primary real-browser baseline. A fresh
+  standalone profile visibly presented Chrome's native location panel while the app
+  stayed in **Finding your location…**; native Allow continued into automatic fixture
+  results, and native Block produced the bounded denied/retry state. Chrome permission
+  control also verified denied stability (one acquisition, zero searches) and recovery
+  (one explicit retry, one search). Localhost was a secure context; a real arbitrary
+  HTTP origin produced the distinct HTTPS-required state. Playwright Firefox 153
+  verified prompt/pending, granted, denied and recovery behavior. Edge, Brave and
+  Opera were not installed; Safari was unavailable on this Linux environment. No
+  HTTPS deployment exists, so deployed-HTTPS behavior remains unverified here.
+- **Remaining limitation:** there is no human-friendly place/address fallback. No geocoder, autocomplete provider or paid service was added.
+
+| Command | Exact result |
+|---|---|
+| `node scripts/validate-brain.mjs` | passed — 22 required files, 78 governed notes, 78 unique IDs, 0 unresolved wiki links |
+| `pnpm format` | passed — all matched files use Prettier style |
+| `pnpm lint` | passed — 0 errors/warnings |
+| `pnpm typecheck` | passed — contracts, domain, api, web |
+| `pnpm test` | passed — 297/297 (contracts 28, domain 31, api 78, web 160) |
+| `pnpm build` | passed — all workspaces; Vite production build; frontend secret check passed |
+| `pnpm e2e` | passed — 48/48 Chromium; includes 10 axe scans, mocked geolocation and blocked Maps script |
+
+- **Provider proof:** automated verification used mocks/fixtures. Real Google Places requests: **0**. Live credentials: **0**.

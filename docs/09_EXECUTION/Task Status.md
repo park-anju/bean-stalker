@@ -2,10 +2,10 @@
 id: EXEC-TASK-STATUS
 type: execution-state
 status: approved
-version: 1.0
+version: 1.1
 authority: execution
 owner: Project Owner
-updated: 2026-09-03
+updated: 2026-09-19
 ---
 # Task Status
 
@@ -17,7 +17,7 @@ Status vocabulary: `PENDING`, `READY`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 | T01 | Shared Zod contracts + env validation | T00 | DONE | [[Data Model]], [[API Key Boundaries]], [[API Contract]] |
 | T02 | Distance/filter/favourite domain helpers | T01 | DONE | [[Ranking and Filtering Rules]], [[Favorite Cafe Model]] |
 | T03 | Responsive React shell/routes | T00 | DONE | [[Screen Inventory]], [[UX Contract]] |
-| T04 | Current + manual location resolution | T01,T03 | DONE | [[Location Resolution]], [[Privacy Boundaries]] |
+| T04 | Initial current + developer-coordinate location resolution (later replaced by H11 UX) | T01,T03 | DONE | [[Location Resolution]], [[Privacy Boundaries]] |
 | T05 | Fastify cafe search + Google provider adapter | T01,T02 | DONE | [[API Contract]], [[External Service Constraints]], [[ADR-005 Server-Side Places Proxy]] |
 | T06 | Maps JavaScript map integration | T03 | DONE | [[System Architecture]], [[API Key Boundaries]] |
 | T07 | Search orchestration/list/marker sync | T04,T05,T06 | DONE | [[Search Lifecycle]], [[UX Contract]], [[ADR-007 Cost-Safe Search Orchestration]] |
@@ -30,7 +30,7 @@ Status vocabulary: `PENDING`, `READY`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 | T14 | deploy with safe env/key restrictions | T13 | PENDING | [[Production Deployment Runbook]], [[Threat Model]] |
 | T15 | README/screenshots/demo/resume evidence | T14 | PENDING | [[Golden Demo Scenario]], [[Release Readiness]] |
 
-## Pre-T08 release-hardening milestones (H02–H10)
+## Pre-T08 release-hardening milestones (H02–H11)
 
 Controlled hardening/release-prep milestones run **while T08 is blocked**. They
 do **not** unblock T08. They run in a chain independent of the `T11`–`T15`
@@ -47,6 +47,7 @@ line, which stays gated on T08.
 | H08 | Mobile & accessibility QA | H07 | DONE | [[UX Contract]], [[Non-Functional Requirements]] |
 | H09 | Architecture documentation | H08 | DONE | [[System Architecture]] v2.0, [[SDD]] |
 | H10 | Portfolio README preparation | H09 | DONE | `README.md`, [[Release Readiness]] |
+| H11 | Automatic Discover location UX; remove raw coordinate UI | H10 | DONE | [[Location Resolution]], [[ADR-003 Location Permission]], [[UX Contract]] |
 
 ## Notes
 

@@ -42,10 +42,8 @@ async function blockGoogleMaps(page: Page) {
   await page.route(/maps\.googleapis\.com/, (route) => route.abort());
 }
 
-async function setManualLocation(page: Page) {
-  await page.getByLabel('Latitude').fill('1.55');
-  await page.getByLabel('Longitude').fill('110.36');
-  await page.getByRole('button', { name: 'Use this location' }).click();
+async function waitForAutomaticLocation(page: Page) {
+  await expect(page.getByRole('status', { name: 'Location status' })).toHaveText('Location found.');
 }
 
 function scan(page: Page) {
@@ -57,7 +55,16 @@ function scan(page: Page) {
 test.describe('accessibility (axe-core) — representative states', () => {
   test('Discovery initial state', async ({ page }) => {
     await blockGoogleMaps(page);
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'geolocation', {
+        configurable: true,
+        value: { getCurrentPosition: () => undefined },
+      });
+    });
     await page.goto('/');
+    await expect(page.getByRole('status', { name: 'Location status' })).toContainText(
+      /finding your location/i,
+    );
     const results = await scan(page).analyze();
     expect(results.violations).toEqual([]);
   });
@@ -67,7 +74,7 @@ test.describe('accessibility (axe-core) — representative states', () => {
     await blockGoogleMaps(page);
     await page.route('**/api/v1/cafes/search', (route) => route.fulfill({ json: RESPONSE }));
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
     await expect(page.getByRole('region', { name: 'Cafe results' })).toBeVisible();
     const results = await scan(page).analyze();
     expect(results.violations).toEqual([]);
@@ -82,7 +89,7 @@ test.describe('accessibility (axe-core) — representative states', () => {
       }),
     );
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
     await page.getByLabel('Minimum rating').selectOption('4.5+');
     await expect(page.getByText(/no cafes match your current filters/i)).toBeVisible();
     const results = await scan(page).analyze();
@@ -95,7 +102,7 @@ test.describe('accessibility (axe-core) — representative states', () => {
       route.fulfill({ json: { ...RESPONSE, cafes: [] } }),
     );
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
     await expect(page.getByText(/no cafes were found/i)).toBeVisible();
     const results = await scan(page).analyze();
     expect(results.violations).toEqual([]);
@@ -110,19 +117,43 @@ test.describe('accessibility (axe-core) — representative states', () => {
       }),
     );
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
     await expect(page.getByRole('alert')).toBeVisible();
     const results = await scan(page).analyze();
     expect(results.violations).toEqual([]);
   });
 
-  test('location error state (invalid manual coordinates)', async ({ page }) => {
+  test('location error state (position unavailable)', async ({ page }) => {
     await blockGoogleMaps(page);
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'geolocation', {
+        configurable: true,
+        value: {
+          getCurrentPosition: (_success: PositionCallback, error?: PositionErrorCallback | null) =>
+            error?.({ code: 2, message: 'unavailable' } as GeolocationPositionError),
+        },
+      });
+    });
     await page.goto('/');
-    await page.getByLabel('Latitude').fill('999');
-    await page.getByLabel('Longitude').fill('0');
-    await page.getByRole('button', { name: 'Use this location' }).click();
-    await expect(page.getByRole('alert')).toContainText(/enter a valid latitude/i);
+    await expect(page.getByRole('alert')).toContainText(/could not access your device location/i);
+    const results = await scan(page).analyze();
+    expect(results.violations).toEqual([]);
+  });
+
+  test('location permission-denied state', async ({ page }) => {
+    await blockGoogleMaps(page);
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'geolocation', {
+        configurable: true,
+        value: {
+          getCurrentPosition: (_success: PositionCallback, error?: PositionErrorCallback | null) =>
+            error?.({ code: 1, message: 'denied' } as GeolocationPositionError),
+        },
+      });
+    });
+    await page.goto('/');
+    await expect(page.getByRole('alert')).toContainText(/browser settings/i);
+    await expect(page.getByRole('button', { name: 'Try location again' })).toBeVisible();
     const results = await scan(page).analyze();
     expect(results.violations).toEqual([]);
   });
@@ -131,7 +162,7 @@ test.describe('accessibility (axe-core) — representative states', () => {
     await blockGoogleMaps(page);
     await page.route('**/api/v1/cafes/search', (route) => route.fulfill({ json: RESPONSE }));
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
     await page.getByRole('button', { name: 'Add Kopi Kenangan to favourites' }).click();
     await page.getByRole('link', { name: 'Favorites' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Favorites' })).toBeVisible();

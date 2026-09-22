@@ -41,10 +41,8 @@ async function noPageOverflow(page: Page) {
   );
 }
 
-async function setManualLocation(page: Page) {
-  await page.getByLabel('Latitude').fill('1.55');
-  await page.getByLabel('Longitude').fill('110.36');
-  await page.getByRole('button', { name: 'Use this location' }).click();
+async function waitForAutomaticLocation(page: Page) {
+  await expect(page.getByRole('status', { name: 'Location status' })).toHaveText('Location found.');
 }
 
 test.describe('mobile — 320px core flow', () => {
@@ -63,7 +61,7 @@ test.describe('mobile — 320px core flow', () => {
     await page.goto('/');
     expect(await noPageOverflow(page)).toBe(true);
 
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
     await expect(page.getByRole('region', { name: 'Cafe results' })).toBeVisible();
     expect(await noPageOverflow(page)).toBe(true);
 
@@ -98,7 +96,7 @@ test.describe('mobile — 320px core flow', () => {
     await page.route('**/api/v1/cafes/search', (route) => route.fulfill({ json: STRESS_RESPONSE }));
 
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
 
     await expect(page.getByText(/A Very Long Cafe Name/)).toBeVisible();
     await expect(page.getByText(/Taman Perindustrian Demak Laut/)).toBeVisible();
@@ -112,31 +110,35 @@ test.describe('mobile — 320px core flow', () => {
 test.describe('mobile — geolocation denied fallback', () => {
   test.use({ viewport: { width: 360, height: 640 } });
 
-  test('a denied permission surfaces an assertive alert and the manual form still works', async ({
-    page,
+  test('a denied permission surfaces guidance and an accessible retry without searching', async ({
+    browser,
   }) => {
+    const context = await browser.newContext({
+      viewport: { width: 360, height: 640 },
+      geolocation: { latitude: 1.55, longitude: 110.36 },
+      permissions: [],
+    });
+    const page = await context.newPage();
     await blockGoogleMaps(page);
-    await page.route('**/api/v1/cafes/search', (route) => route.fulfill({ json: STRESS_RESPONSE }));
+    let searchCount = 0;
+    await page.route('**/api/v1/cafes/search', (route) => {
+      searchCount += 1;
+      return route.fulfill({ json: STRESS_RESPONSE });
+    });
 
     await page.goto('/');
-    // No geolocation permission granted → getCurrentPosition rejects.
-    await page.getByRole('button', { name: 'Use my current location' }).click();
 
     const alert = page.getByRole('alert');
-    await expect(alert).toContainText(/permission was denied/i);
-
-    // GPS denial must not trap the user — manual entry remains fully usable.
-    await setManualLocation(page);
-    await expect(page.getByRole('status', { name: 'Location status' })).toHaveText(
-      'Using a custom location (1.5500, 110.3600).',
-    );
-    await expect(page.getByRole('region', { name: 'Cafe results' })).toBeVisible();
+    await expect(alert).toContainText(/browser settings/i);
+    await expect(page.getByRole('button', { name: 'Try location again' })).toBeVisible();
+    expect(searchCount).toBe(0);
     expect(await noPageOverflow(page)).toBe(true);
+    await context.close();
   });
 });
 
 test.describe('keyboard-only operation', () => {
-  test('a keyboard user can set a location, search, select a card and favourite it', async ({
+  test('a keyboard user can use automatic discovery, select a card and favourite it', async ({
     page,
   }) => {
     await blockGoogleMaps(page);
@@ -147,20 +149,12 @@ test.describe('keyboard-only operation', () => {
     });
 
     await page.goto('/');
+    await waitForAutomaticLocation(page);
+    await expect(page.getByRole('region', { name: 'Cafe results' })).toBeVisible();
 
     // Tab from the document start reaches the skip link first.
     await page.keyboard.press('Tab');
     await expect(page.getByRole('link', { name: 'Skip to main content' })).toBeFocused();
-
-    // Reach the coordinate fields by keyboard and fill them.
-    await page.getByLabel('Latitude').focus();
-    await page.keyboard.type('1.55');
-    await page.keyboard.press('Tab');
-    await page.keyboard.type('110.36');
-    await page.getByRole('button', { name: 'Use this location' }).focus();
-    await page.keyboard.press('Enter');
-
-    await expect(page.getByRole('region', { name: 'Cafe results' })).toBeVisible();
 
     // Select the first card with the keyboard.
     const card = page.getByRole('button', { name: 'Kopi Kenangan', exact: true });
@@ -186,7 +180,7 @@ test.describe('keyboard-only operation', () => {
     await page.route('**/api/v1/cafes/search', (route) => route.fulfill({ json: STRESS_RESPONSE }));
 
     await page.goto('/');
-    await setManualLocation(page);
+    await waitForAutomaticLocation(page);
     await expect(page.getByRole('region', { name: 'Cafe results' })).toBeVisible();
 
     // Tab through the whole page from the top; every focus stop that is one

@@ -2,18 +2,18 @@
 id: REQ-FUNCTIONAL
 type: requirements-spec
 status: approved
-version: 1.0
+version: 1.1
 authority: canonical
 owner: Project Owner
-updated: 2026-08-27
+updated: 2026-09-19
 ---
 # Functional Requirements
 
 | ID | Requirement | Primary source |
 |---|---|---|
-| FR-001 | User can request current location. | [[Location Resolution]] |
-| FR-002 | User can manually select/search a location. | [[Location Resolution]] |
-| FR-003 | User can trigger nearby cafe search for the resolved center. | [[Search Lifecycle]] |
+| FR-001 | Discover automatically requests current location when no usable session location exists. | [[Location Resolution]] |
+| FR-002 | Normal user UI does not expose raw latitude/longitude entry or precise current coordinates. | [[Location Resolution]] |
+| FR-003 | Resolving a current location automatically triggers nearby cafe search through the existing query pipeline. | [[Search Lifecycle]] |
 | FR-004 | System returns normalized cafe results from Google Places in live mode. | [[Cafe Discovery Model]] |
 | FR-005 | Results render as both list and map markers. | [[UX Contract]] |
 | FR-006 | Selecting a card/marker highlights the corresponding cafe. | [[UX Contract]] |
@@ -30,3 +30,4 @@ updated: 2026-08-27
 | FR-017 | User can open a cafe in Google Maps when URI is available. | [[Cafe Discovery Model]] |
 | FR-018 | System validates and bounds search parameters before provider call. | [[Business Rules]] |
 | FR-019 | Health endpoint reports API process availability without leaking secrets. | [[API Contract]] |
+| FR-020 | Recoverable location failures provide bounded guidance and an explicit user-triggered retry without automatic loops. | [[Location Resolution]] |

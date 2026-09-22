@@ -2,10 +2,10 @@
 id: IFACE-UX-CONTRACT
 type: interface-spec
 status: approved
-version: 1.1
+version: 1.2
 authority: canonical
 owner: Project Owner
-updated: 2026-09-03
+updated: 2026-09-19
 ---
 # UX Contract
 
@@ -16,13 +16,15 @@ The list is the accessible information surface; the map is a spatial enhancement
 ## Discovery states
 
 ### Initial
-Explain what to do and present current/manual location options.
+Explain why current location is needed and automatically begin location resolution once.
 
 ### Locating
-Show location progress and a manual alternative if resolution is slow/fails.
+Show location progress while the browser's Geolocation request is unresolved,
+including while native permission UI is pending. Do not show blocked guidance until
+the request fails. On failure, show bounded guidance and an explicit retry where meaningful.
 
 ### Searching
-Keep layout stable; show clear progress; do not duplicate requests on incidental rerenders.
+Begin automatically after location resolves. Keep layout stable; show clear progress; do not duplicate requests on incidental rerenders.
 
 ### Results
 List and map represent the same current result set. Card/marker selection is synchronized.
@@ -31,7 +33,18 @@ List and map represent the same current result set. Card/marker selection is syn
 State that no matching cafes were returned for the current area/filters; offer radius/filter adjustment.
 
 ### Error
-Explain that search failed without pretending there are zero cafes. Offer retry/manual location as relevant.
+Explain that search failed without pretending there are zero cafes. Offer explicit retry as relevant.
+
+## Location controls
+
+- Do not ask normal users to enter raw latitude/longitude.
+- Do not display precise current coordinates in status copy.
+- The initial successful location resolution starts discovery without a Search click.
+- No dedicated Search button exists today; provider retry remains an explicit action.
+- A human-friendly manual place/address fallback is a future UX item, not part of the current flow.
+- Native permission UI is owned by the browser. Copy must not imply Bean Stalker can
+  reopen it, override a site block, or enable device/OS location services.
+- Production geolocation requires HTTPS; localhost is the development exception.
 
 ## Cafe data cues
 
@@ -61,14 +74,15 @@ Explain that search failed without pretending there are zero cafes. Offer retry/
   states all usable.
 - **Contrast:** interactive/link text meets WCAG 2.1 AA (`--color-accent`
   is `#a85a17`, ≥4.5:1 on both `--color-bg` and `--color-surface`). Verified
-  by `axe-core` across 9 representative states.
+  by `axe-core` across the 9-state H08 baseline; the current suite scans 10
+  states after adding a distinct permission-denied location state.
 - **Target size:** the "Open now only" checkbox is 1.5 rem (24 px), meeting
   the WCAG 2.2 minimum; standalone links ("Open in Google Maps", the 404
   home link) carry vertical padding for a comfortable tap target. Inline
   links inside a sentence are left at text size (WCAG 2.2 inline exception).
-- **Errors:** location failures (denied permission, invalid coordinates)
-  render in an assertive `role="alert"`; invalid manual coordinates set
-  `aria-invalid` + `aria-describedby` on both coordinate inputs. Search
+- **Errors:** location failures (denied, unavailable, timeout, unsupported)
+  render in an assertive `role="alert"`; recoverable failures provide a clearly
+  labelled **Try location again** button. Search
   progress/empty use polite `role="status"`; search failures use
   `role="alert"` with an explicit (never automatic) Retry.
 - **Motion:** Bean Stalker adds no custom CSS animation/transition; card
@@ -76,8 +90,8 @@ Explain that search failed without pretending there are zero cafes. Offer retry/
   animation is outside Bean Stalker's control.
 - **Automated scanning:** `@axe-core/playwright` (dev-only; excluded from
   the production bundle) scans Discovery (initial / results / filtered
-  -empty / empty / error), the location-error state, Favorites (populated /
-  empty) and 404. A clean axe run supplements — does not replace — manual
+  -empty / empty / error), unavailable and permission-denied location states,
+  Favorites (populated / empty) and 404. A clean axe run supplements — does not replace — manual
   keyboard/mobile review and is **not** a WCAG-conformance claim.
 
 ## Tone

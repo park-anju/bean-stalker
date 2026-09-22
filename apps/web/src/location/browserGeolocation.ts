@@ -1,4 +1,6 @@
 export interface GeolocationAdapter {
+  isSecureContext(): boolean;
+  isSupported(): boolean;
   getCurrentPosition(): Promise<GeolocationPosition>;
 }
 
@@ -14,13 +16,23 @@ const GEOLOCATION_OPTIONS: PositionOptions = {
 };
 
 export const browserGeolocationAdapter: GeolocationAdapter = {
+  isSecureContext() {
+    // `isSecureContext` is the browser's authoritative classification. Treat
+    // an older browser that does not expose it as unknown and still attempt
+    // Geolocation rather than creating a new compatibility requirement.
+    return typeof window !== 'undefined' && window.isSecureContext !== false;
+  },
+
+  isSupported() {
+    return (
+      typeof navigator !== 'undefined' &&
+      typeof navigator.geolocation?.getCurrentPosition === 'function'
+    );
+  },
+
   getCurrentPosition() {
     return new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject, GEOLOCATION_OPTIONS);
     });
   },
 };
-
-export function isGeolocationSupported(): boolean {
-  return typeof navigator !== 'undefined' && 'geolocation' in navigator;
-}

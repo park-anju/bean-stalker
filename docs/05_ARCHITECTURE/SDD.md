@@ -2,10 +2,10 @@
 id: ARCH-SDD
 type: architecture-spec
 status: approved
-version: 1.1
+version: 1.2
 authority: canonical
 owner: Project Owner
-updated: 2026-09-03
+updated: 2026-09-19
 ---
 # Software Design Description
 
@@ -17,7 +17,7 @@ Defines implementation **design intent** for [[MVP Scope]] and [[SRS]].
 > context, container/runtime layout, the cafe-search sequence, state
 > ownership, the location data lifecycle, the cost/abuse guardrail stack, the
 > provider abstraction, and the explicit non-goals — see [[System Architecture]]
-> (v2.0, H09). This SDD records the design *as planned*; where the two differ,
+> (v2.1, H11). This SDD records the design *as planned*; where the two differ,
 > [[System Architecture]] §"As-built corrections" is authoritative and this note
 > is updated to match.
 
@@ -56,7 +56,7 @@ Bean Stalker/
   parameters are held in the URL — shareable searches are a post-MVP idea
   ([[Productionization Program]] `PRD-07`);
 - **transient UI state:** selected cafe id, local filters/sort, location
-  resolution state, manual-input fields (React state, never persisted);
+  resolution state (React context/reducer for the app session, never persisted);
 - **persistent local state:** favourites only (`localStorage`);
 - **server operational state:** in-memory rate-limit windows + monthly
   provider-usage count — abuse/cost control, **not** user or session data.
