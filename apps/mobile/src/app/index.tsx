@@ -1,8 +1,10 @@
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import CafeList from '@/components/cafe-list';
+import SearchStatus from '@/components/search-status';
+import { Colors, Spacing } from '@/constants/theme';
 import { useLocation } from '@/location/LocationProvider';
-import { describeSearchError } from '@/search/errorCopy';
 import { readySearchCenter } from '@/search/searchEligibility';
 import { useCafeSearch } from '@/search/useCafeSearch';
 
@@ -10,77 +12,29 @@ export default function DiscoverScreen() {
   const { state, retry, openAppSettings } = useLocation();
   const center = readySearchCenter(state);
   const { view, retry: retrySearch } = useCafeSearch(center);
+  const scheme = useColorScheme();
+  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <View style={styles.container}>
-        <Text style={styles.title}>Bean Stalker</Text>
-        <Text style={styles.body}>Find cafés worth going to.</Text>
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: colors.text }]}>KofVriend</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Find a café for the moment.</Text>
+        </View>
+
         <LocationStatus state={state} onRetry={retry} onOpenSettings={openAppSettings} />
-        {state.status === 'ready' ? <SearchResults view={view} onRetry={retrySearch} /> : null}
+
+        {state.status === 'ready' ? (
+          view.status === 'success' && view.cafes.length > 0 ? (
+            <CafeList cafes={view.cafes} />
+          ) : (
+            <SearchStatus view={view} onRetry={retrySearch} />
+          )
+        ) : null}
       </View>
     </SafeAreaView>
   );
-}
-
-function SearchResults({
-  view,
-  onRetry,
-}: {
-  view: ReturnType<typeof useCafeSearch>['view'];
-  onRetry: () => void;
-}) {
-  if (view.status === 'loading') {
-    return <Text style={styles.secondary}>Finding cafés nearby…</Text>;
-  }
-
-  if (view.status === 'error') {
-    return (
-      <View style={styles.errorCard} accessibilityRole="alert">
-        <Text style={styles.errorText}>{describeSearchError(view.error.code)}</Text>
-        <Pressable accessibilityRole="button" onPress={onRetry} style={styles.button}>
-          <Text style={styles.buttonText}>Retry search</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
-  if (view.status !== 'success') return null;
-  if (view.cafes.length === 0) {
-    return <Text style={styles.secondary}>No cafés found nearby.</Text>;
-  }
-
-  return (
-    <FlatList
-      data={view.cafes}
-      keyExtractor={(cafe) => cafe.placeId}
-      style={styles.list}
-      contentContainerStyle={styles.results}
-      renderItem={({ item }) => (
-        <View style={styles.result} accessible accessibilityRole="text">
-          <Text style={styles.resultTitle}>{item.name}</Text>
-          {item.rating !== undefined ? <Text style={styles.secondary}>Rating: {item.rating}</Text> : null}
-          {item.formattedAddress ? <Text style={styles.secondary}>{item.formattedAddress}</Text> : null}
-          <Text style={styles.secondary}>{formatDistance(item.distanceMeters)}</Text>
-          <Text style={item.openStatus === 'OPEN' ? styles.open : styles.secondary}>
-            {formatOpenStatus(item.openStatus)}
-          </Text>
-        </View>
-      )}
-    />
-  );
-}
-
-function formatDistance(distanceMeters: number): string {
-  return distanceMeters < 1000
-    ? `${Math.round(distanceMeters)} m away`
-    : `${(distanceMeters / 1000).toFixed(1)} km away`;
-}
-
-function formatOpenStatus(status: 'OPEN' | 'CLOSED' | 'UNKNOWN'): string {
-  if (status === 'OPEN') return 'Open';
-  if (status === 'CLOSED') return 'Closed';
-  return 'Opening hours unavailable';
 }
 
 function LocationStatus({
@@ -92,29 +46,26 @@ function LocationStatus({
   onRetry: () => Promise<void>;
   onOpenSettings: () => Promise<void>;
 }) {
+  const scheme = useColorScheme();
+  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+
   if (state.status === 'ready') {
     return (
-      <View style={styles.statusCard} accessible accessibilityRole="text">
-        <Text style={styles.statusTitle}>Location ready</Text>
-        <Text style={styles.secondary}>Bean Stalker can now search nearby cafés.</Text>
+      <View style={styles.readyStatus} accessibilityRole="text">
+        <View style={[styles.readyDot, { backgroundColor: colors.success }]} />
+        <Text style={[styles.readyText, { color: colors.textSecondary }]}>Using your current location</Text>
       </View>
     );
   }
 
   if (state.status === 'permission-denied') {
-    return (
-      <LocationError
-        message="Location access is required to find cafés near you."
-        actionLabel="Try again"
-        onAction={onRetry}
-      />
-    );
+    return <LocationError message="Location access is required to find cafés near you." actionLabel="Try again" onAction={onRetry} />;
   }
 
   if (state.status === 'settings-required') {
     return (
       <LocationError
-        message="Location access is blocked. Enable it for Bean Stalker in Android settings."
+        message="Location access is blocked. Enable it for KofVriend in Android settings."
         actionLabel="Open app settings"
         onAction={onOpenSettings}
         secondaryActionLabel="Try again"
@@ -126,7 +77,7 @@ function LocationStatus({
   if (state.status === 'services-unavailable') {
     return (
       <LocationError
-        message="Device location services are unavailable. Enable location in Android settings, then try again."
+        message="Device location services are unavailable. Enable Location in Android settings, then try again."
         actionLabel="Try again"
         onAction={onRetry}
       />
@@ -136,7 +87,7 @@ function LocationStatus({
   if (state.status === 'services-disabled') {
     return (
       <LocationError
-        message="Your last location is no longer verified. Turn on device Location if needed, then try again."
+        message="Your last location is no longer verified. Turn on device Location, then try again."
         actionLabel="Try again"
         onAction={onRetry}
       />
@@ -146,7 +97,7 @@ function LocationStatus({
   if (state.status === 'error') {
     return (
       <LocationError
-        message="Bean Stalker could not determine your location."
+        message="KofVriend could not determine your location."
         actionLabel="Try again"
         onAction={onRetry}
       />
@@ -154,7 +105,7 @@ function LocationStatus({
   }
 
   return (
-    <Text style={styles.secondary} accessibilityLiveRegion="polite">
+    <Text style={[styles.resolving, { color: colors.textSecondary }]} accessibilityLiveRegion="polite">
       Finding your location…
     </Text>
   );
@@ -173,9 +124,16 @@ function LocationError({
   secondaryActionLabel?: string;
   onSecondaryAction?: () => Promise<void>;
 }) {
+  const scheme = useColorScheme();
+  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+
   return (
-    <View style={styles.errorCard} accessibilityLiveRegion="polite" accessibilityRole="alert">
-      <Text style={styles.errorText}>{message}</Text>
+    <View
+      style={[styles.locationError, { backgroundColor: colors.warningSurface, borderColor: colors.border }]}
+      accessibilityLiveRegion="polite"
+      accessibilityRole="alert"
+    >
+      <Text style={[styles.locationMessage, { color: colors.text }]}>{message}</Text>
       <View style={styles.actions}>
         <TextButton label={actionLabel} onPress={onAction} />
         {secondaryActionLabel && onSecondaryAction ? (
@@ -195,111 +153,87 @@ function TextButton({
   onPress: () => Promise<void>;
   secondary?: boolean;
 }) {
+  const scheme = useColorScheme();
+  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+
   return (
-    <Text
+    <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={() => void onPress()}
-      style={[styles.button, secondary && styles.secondaryButton]}
+      style={[styles.button, { backgroundColor: secondary ? colors.backgroundElement : colors.accent }]}
     >
-      {label}
-    </Text>
+      <Text style={[styles.buttonText, { color: secondary ? colors.text : '#ffffff' }]}>{label}</Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   container: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    gap: 12,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.three,
+    gap: Spacing.two,
+  },
+  header: {
+    gap: Spacing.half,
+    paddingBottom: Spacing.one,
   },
   title: {
-    color: '#202124',
     fontSize: 32,
     fontWeight: '700',
+    letterSpacing: -0.5,
+    lineHeight: 38,
   },
-  body: {
-    color: '#202124',
-    fontSize: 20,
-    lineHeight: 28,
-  },
-  secondary: {
-    color: '#5f6368',
-    fontSize: 16,
+  subtitle: {
+    fontSize: 17,
     lineHeight: 24,
   },
-  statusCard: {
-    gap: 8,
-    padding: 20,
-    borderRadius: 16,
-    backgroundColor: '#eef6ee',
+  readyStatus: {
+    minHeight: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
   },
-  statusTitle: {
-    color: '#1f5c2b',
-    fontSize: 18,
-    fontWeight: '700',
+  readyDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  errorCard: {
-    gap: 16,
-    padding: 20,
-    borderRadius: 16,
-    backgroundColor: '#fff4e5',
+  readyText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
-  results: {
-    gap: 12,
-    paddingBottom: 24,
-  },
-  list: {
-    flex: 1,
-  },
-  result: {
-    gap: 4,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#f1f3f4',
-  },
-  resultTitle: {
-    color: '#202124',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  open: {
-    color: '#1f5c2b',
+  resolving: {
+    minHeight: 32,
     fontSize: 16,
+    lineHeight: 23,
   },
-  errorText: {
-    color: '#5c3b00',
+  locationError: {
+    gap: Spacing.two,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: Spacing.three,
+  },
+  locationMessage: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 23,
   },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: Spacing.two,
   },
   button: {
     minHeight: 48,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.three,
     borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#202124',
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  secondaryButton: {
-    backgroundColor: '#e8eaed',
-    color: '#202124',
   },
   buttonText: {
-    color: '#ffffff',
     fontSize: 16,
     fontWeight: '700',
     textAlign: 'center',
