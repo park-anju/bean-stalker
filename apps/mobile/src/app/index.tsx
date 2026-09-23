@@ -1,10 +1,15 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useLocation } from '@/location/LocationProvider';
+import { describeSearchError } from '@/search/errorCopy';
+import { readySearchCenter } from '@/search/searchEligibility';
+import { useCafeSearch } from '@/search/useCafeSearch';
 
 export default function DiscoverScreen() {
   const { state, retry, openAppSettings } = useLocation();
+  const center = readySearchCenter(state);
+  const { view, retry: retrySearch } = useCafeSearch(center);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -12,9 +17,70 @@ export default function DiscoverScreen() {
         <Text style={styles.title}>Bean Stalker</Text>
         <Text style={styles.body}>Find cafés worth going to.</Text>
         <LocationStatus state={state} onRetry={retry} onOpenSettings={openAppSettings} />
+        {state.status === 'ready' ? <SearchResults view={view} onRetry={retrySearch} /> : null}
       </View>
     </SafeAreaView>
   );
+}
+
+function SearchResults({
+  view,
+  onRetry,
+}: {
+  view: ReturnType<typeof useCafeSearch>['view'];
+  onRetry: () => void;
+}) {
+  if (view.status === 'loading') {
+    return <Text style={styles.secondary}>Finding cafés nearby…</Text>;
+  }
+
+  if (view.status === 'error') {
+    return (
+      <View style={styles.errorCard} accessibilityRole="alert">
+        <Text style={styles.errorText}>{describeSearchError(view.error.code)}</Text>
+        <Pressable accessibilityRole="button" onPress={onRetry} style={styles.button}>
+          <Text style={styles.buttonText}>Retry search</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (view.status !== 'success') return null;
+  if (view.cafes.length === 0) {
+    return <Text style={styles.secondary}>No cafés found nearby.</Text>;
+  }
+
+  return (
+    <FlatList
+      data={view.cafes}
+      keyExtractor={(cafe) => cafe.placeId}
+      style={styles.list}
+      contentContainerStyle={styles.results}
+      renderItem={({ item }) => (
+        <View style={styles.result} accessible accessibilityRole="text">
+          <Text style={styles.resultTitle}>{item.name}</Text>
+          {item.rating !== undefined ? <Text style={styles.secondary}>Rating: {item.rating}</Text> : null}
+          {item.formattedAddress ? <Text style={styles.secondary}>{item.formattedAddress}</Text> : null}
+          <Text style={styles.secondary}>{formatDistance(item.distanceMeters)}</Text>
+          <Text style={item.openStatus === 'OPEN' ? styles.open : styles.secondary}>
+            {formatOpenStatus(item.openStatus)}
+          </Text>
+        </View>
+      )}
+    />
+  );
+}
+
+function formatDistance(distanceMeters: number): string {
+  return distanceMeters < 1000
+    ? `${Math.round(distanceMeters)} m away`
+    : `${(distanceMeters / 1000).toFixed(1)} km away`;
+}
+
+function formatOpenStatus(status: 'OPEN' | 'CLOSED' | 'UNKNOWN'): string {
+  if (status === 'OPEN') return 'Open';
+  if (status === 'CLOSED') return 'Closed';
+  return 'Opening hours unavailable';
 }
 
 function LocationStatus({
@@ -148,8 +214,8 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    justifyContent: 'center',
     paddingHorizontal: 24,
+    paddingTop: 24,
     gap: 12,
   },
   title: {
@@ -184,6 +250,28 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#fff4e5',
   },
+  results: {
+    gap: 12,
+    paddingBottom: 24,
+  },
+  list: {
+    flex: 1,
+  },
+  result: {
+    gap: 4,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#f1f3f4',
+  },
+  resultTitle: {
+    color: '#202124',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  open: {
+    color: '#1f5c2b',
+    fontSize: 16,
+  },
   errorText: {
     color: '#5c3b00',
     fontSize: 16,
@@ -209,5 +297,11 @@ const styles = StyleSheet.create({
   secondaryButton: {
     backgroundColor: '#e8eaed',
     color: '#202124',
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });
