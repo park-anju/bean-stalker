@@ -1,14 +1,23 @@
-import { StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import type { Cafe } from '@bean-stalker/contracts';
 
 import { Colors, Spacing } from '@/constants/theme';
 import {
   cafeCardAccessibilityLabel,
+  cafeCardAccessibilityState,
   formatCafeDistance,
   formatCafeOpenStatus,
 } from './cafe-presentation';
 
-export default function CafeCard({ cafe }: { cafe: Cafe }) {
+export default function CafeCard({
+  cafe,
+  selected = false,
+  onPress,
+}: {
+  cafe: Cafe;
+  selected?: boolean;
+  onPress?: () => void;
+}) {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const statusStyle =
@@ -19,11 +28,20 @@ export default function CafeCard({ cafe }: { cafe: Cafe }) {
         : { color: colors.textSecondary };
 
   return (
-    <View
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
       accessible
-      accessibilityRole="text"
+      accessibilityRole={onPress ? 'button' : 'text'}
       accessibilityLabel={cafeCardAccessibilityLabel(cafe)}
-      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      accessibilityState={cafeCardAccessibilityState(selected)}
+      style={[
+        styles.card,
+        {
+          backgroundColor: selected ? colors.surfaceMuted : colors.surface,
+          borderColor: selected ? colors.accent : colors.border,
+        },
+      ]}
     >
       <Text style={[styles.name, { color: colors.text }]}>{cafe.name}</Text>
 
@@ -41,7 +59,7 @@ export default function CafeCard({ cafe }: { cafe: Cafe }) {
       {cafe.formattedAddress ? (
         <Text style={[styles.address, { color: colors.textSecondary }]}>{cafe.formattedAddress}</Text>
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 

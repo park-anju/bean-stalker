@@ -3,6 +3,7 @@ import type { Cafe } from '@bean-stalker/contracts';
 
 import {
   cafeCardAccessibilityLabel,
+  cafeCardAccessibilityState,
   formatCafeDistance,
   formatCafeOpenStatus,
 } from './cafe-presentation';
@@ -32,6 +33,11 @@ describe('cafe presentation helpers', () => {
       openStatus: 'UNKNOWN',
     };
     expect(cafeCardAccessibilityLabel(cafe)).toBe('Kopi Kenangan, 420 m, Hours unavailable');
+  });
+
+  it('exposes selected state for the accessible card control', () => {
+    expect(cafeCardAccessibilityState(true)).toEqual({ selected: true });
+    expect(cafeCardAccessibilityState(false)).toEqual({ selected: false });
   });
 
   it.each([

@@ -25,3 +25,7 @@ export function cafeCardAccessibilityLabel(cafe: Cafe): string {
     address
   );
 }
+
+export function cafeCardAccessibilityState(selected: boolean) {
+  return { selected };
+}

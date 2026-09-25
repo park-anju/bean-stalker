@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -5,6 +6,8 @@ import CafeList from '@/components/cafe-list';
 import SearchStatus from '@/components/search-status';
 import { Colors, Spacing } from '@/constants/theme';
 import { useLocation } from '@/location/LocationProvider';
+import CafeMap from '@/map/cafe-map';
+import { reconcileSelectedCafeId, selectCafeId } from '@/map/mapSelection';
 import { readySearchCenter } from '@/search/searchEligibility';
 import { useCafeSearch } from '@/search/useCafeSearch';
 
@@ -12,8 +15,14 @@ export default function DiscoverScreen() {
   const { state, retry, openAppSettings } = useLocation();
   const center = readySearchCenter(state);
   const { view, retry: retrySearch } = useCafeSearch(center);
+  const [selectedCafeId, setSelectedCafeId] = useState<string | null>(null);
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const cafes = view.status === 'success' ? view.cafes : [];
+  const activeSelectedCafeId = reconcileSelectedCafeId(cafes, selectedCafeId);
+  const selectCafe = useCallback((cafeId: string) => {
+    setSelectedCafeId(selectCafeId(cafeId));
+  }, []);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
@@ -26,8 +35,20 @@ export default function DiscoverScreen() {
         <LocationStatus state={state} onRetry={retry} onOpenSettings={openAppSettings} />
 
         {state.status === 'ready' ? (
-          view.status === 'success' && view.cafes.length > 0 ? (
-            <CafeList cafes={view.cafes} />
+          view.status === 'success' && view.cafes.length > 0 && center ? (
+            <CafeList
+              cafes={view.cafes}
+              selectedCafeId={activeSelectedCafeId}
+              onSelectCafe={selectCafe}
+              headerComponent={
+                <CafeMap
+                  center={center}
+                  cafes={view.cafes}
+                  selectedCafeId={activeSelectedCafeId}
+                  onSelectCafe={selectCafe}
+                />
+              }
+            />
           ) : (
             <SearchStatus view={view} onRetry={retrySearch} />
           )
